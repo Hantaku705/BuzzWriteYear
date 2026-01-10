@@ -35,6 +35,8 @@ const getRedisConnection = (): ConnectionOptions => {
 // キュー名
 export const QUEUE_NAMES = {
   VIDEO_GENERATION: 'video-generation',
+  UGC_PROCESSING: 'ugc-processing',
+  HEYGEN_GENERATION: 'heygen-generation',
   TIKTOK_POSTING: 'tiktok-posting',
   ANALYTICS_COLLECTION: 'analytics-collection',
 } as const
@@ -64,9 +66,31 @@ export interface AnalyticsCollectionJobData {
   tiktokVideoId: string
 }
 
+export interface UGCProcessingJobData {
+  videoId: string
+  userId: string
+  inputPath: string
+  preset?: 'tiktok' | 'review' | 'vintage' | 'custom'
+  customEffects?: string[]
+  intensity?: 'light' | 'medium' | 'heavy'
+}
+
+export interface HeyGenJobData {
+  videoId: string
+  userId: string
+  avatarId: string
+  script: string
+  voiceId?: string
+  backgroundUrl?: string
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ugcProcessingQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let heygenQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let tiktokPostingQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,6 +104,26 @@ export const getVideoGenerationQueue = () => {
     )
   }
   return videoGenerationQueue
+}
+
+export const getUGCProcessingQueue = () => {
+  if (!ugcProcessingQueue) {
+    ugcProcessingQueue = new Queue(
+      QUEUE_NAMES.UGC_PROCESSING,
+      { connection: getRedisConnection() }
+    )
+  }
+  return ugcProcessingQueue
+}
+
+export const getHeyGenQueue = () => {
+  if (!heygenQueue) {
+    heygenQueue = new Queue(
+      QUEUE_NAMES.HEYGEN_GENERATION,
+      { connection: getRedisConnection() }
+    )
+  }
+  return heygenQueue
 }
 
 export const getTikTokPostingQueue = () => {
@@ -143,6 +187,38 @@ export const addAnalyticsCollectionJob = async (
       every: 1000 * 60 * 60 * 6, // 6時間ごと
     },
     attempts: 3,
+  })
+}
+
+export const addUGCProcessingJob = async (
+  data: UGCProcessingJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getUGCProcessingQueue()
+  return queue.add('process', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 5000,
+    },
+  })
+}
+
+export const addHeyGenJob = async (
+  data: HeyGenJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getHeyGenQueue()
+  return queue.add('generate', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
+    },
   })
 }
 
