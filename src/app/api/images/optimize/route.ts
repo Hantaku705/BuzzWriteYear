@@ -26,12 +26,25 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const generateThumbs = formData.get('thumbnails') === 'true'
-    const format = (formData.get('format') as 'webp' | 'jpeg' | 'png') || 'webp'
-    const quality = parseInt(formData.get('quality') as string) || 85
-    const maxWidth = parseInt(formData.get('maxWidth') as string) || 1200
+    const formatRaw = formData.get('format') as string | null
+    const qualityRaw = parseInt(formData.get('quality') as string) || 85
+    const maxWidthRaw = parseInt(formData.get('maxWidth') as string) || 1200
+
+    // パラメータ検証（DoS対策）
+    const allowedFormats = ['webp', 'jpeg', 'png'] as const
+    const format = allowedFormats.includes(formatRaw as typeof allowedFormats[number])
+      ? (formatRaw as 'webp' | 'jpeg' | 'png')
+      : 'webp'
+    const quality = Math.min(100, Math.max(1, qualityRaw))
+    const maxWidth = Math.min(4000, Math.max(100, maxWidthRaw))
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    // ファイルサイズ制限（10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      return NextResponse.json({ error: 'File too large (max 10MB)' }, { status: 400 })
     }
 
     const arrayBuffer = await file.arrayBuffer()

@@ -3,11 +3,26 @@ import { createClient } from '@/lib/supabase/server'
 import { addVideoGenerationJob } from '@/lib/queue/client'
 import { z } from 'zod'
 
+// inputPropsの許可リスト方式スキーマ（任意データを制限）
+const inputPropsSchema = z.object({
+  productName: z.string().max(200).optional(),
+  price: z.union([z.number(), z.string()]).optional(),
+  features: z.array(z.string().max(500)).max(20).optional(),
+  beforeImage: z.string().url().optional(),
+  afterImage: z.string().url().optional(),
+  reviewText: z.string().max(1000).optional(),
+  reviewerName: z.string().max(100).optional(),
+  rating: z.number().min(1).max(5).optional(),
+  backgroundColor: z.string().max(20).optional(),
+  textColor: z.string().max(20).optional(),
+  productImage: z.string().url().optional(),
+}).passthrough() // 追加フィールドは許可するが基本は検証済み
+
 const generateVideoSchema = z.object({
   productId: z.string().uuid(),
   templateId: z.string().uuid(),
   compositionId: z.enum(['ProductIntro', 'BeforeAfter', 'ReviewText', 'FeatureList']),
-  inputProps: z.record(z.string(), z.unknown()),
+  inputProps: inputPropsSchema,
   title: z.string().min(1).max(255),
 })
 
