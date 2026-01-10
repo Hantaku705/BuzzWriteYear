@@ -49,6 +49,7 @@
 - [x] **Kling API修正（PiAPI正しい形式に対応）**
 - [x] **ワーカースクリプト作成（scripts/start-worker.ts）**
 - [x] **Render本番ワーカーデプロイ（kling-worker）**
+- [x] **バリアント一括生成機能（A/Bテスト用）**
 
 ### 作業中のタスク
 - なし
@@ -93,16 +94,32 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
+ M scripts/start-worker.ts
  M src/app/(dashboard)/videos/[id]/page.tsx
 ?? src/components/video/VariantGenerateModal.tsx
 ```
 
 ## 最新コミット
 ```
-19f5afd docs: セッション12記録・Render本番ワーカーデプロイ完了
+0d19dac docs: HANDOFF.md・CLAUDE.md更新（Render本番ワーカー情報）
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション13）
+- **バリアント一括生成機能を実装**
+  - VariantGenerateModalコンポーネント作成（3プリセット）
+    - TikTok A/Bテスト: オリジナル/UGCライト/UGCヘビー/ヴィンテージ
+    - マルチプラットフォーム: TikTok/Instagram Reels/YouTube Shorts/Twitter
+    - フルテスト: UGC×字幕の組み合わせ（5パターン）
+  - /api/videos/variants APIエンドポイント（既存確認）
+  - scripts/start-worker.tsにバリアントワーカー追加
+    - VARIANT_PRESETSでプリセット定義
+    - processVariantJob関数でUGCエフェクト・字幕・プラットフォーム変換処理
+    - variantWorkerをgraceful shutdownに追加
+  - TypeScript型エラー修正（'custom'プリセットのインデックスアクセス）
+  - 動画詳細ページにバリアント生成ボタン統合済み確認
+  - ビルド成功確認
 
 ### 2026-01-11（セッション12）
 - **本番ワーカーデプロイ完了（Render）**

@@ -108,7 +108,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/app/api/tiktok/` | TikTok OAuth APIエンドポイント |
 | `src/components/layout/` | Sidebar, Header |
 | `src/components/product/` | 商品関連コンポーネント |
-| `src/components/video/` | 動画プレビュー（RemotionPreview, VideoGenerateModal） |
+| `src/components/video/` | 動画プレビュー（RemotionPreview, VideoGenerateModal, VariantGenerateModal） |
 | `src/components/analytics/` | 分析ダッシュボードコンポーネント |
 | `src/components/auth/` | 認証フォームコンポーネント |
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
@@ -157,6 +157,16 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | vintage_filter | ヴィンテージ風 |
 | phone_quality | スマホ撮影風 |
 | selfie_mode | 自撮り風（左右反転） |
+
+---
+
+## バリアントプリセット（A/Bテスト用）
+
+| プリセット | バリアント | 用途 |
+|-----------|-----------|------|
+| tiktok_ab | オリジナル / UGCライト / UGCヘビー / ヴィンテージ | TikTok A/Bテスト |
+| multi_platform | TikTok / Instagram Reels / YouTube Shorts / Twitter | マルチプラットフォーム展開 |
+| full_test | オリジナル / UGCライト / UGCミディアム / 字幕付き / UGC+字幕 | フルテスト |
 
 ---
 

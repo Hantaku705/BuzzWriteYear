@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,8 @@ import {
   Video,
   Trash2,
   ExternalLink,
+  Wand2,
+  Layers,
 } from 'lucide-react'
 import {
   AlertDialog,
@@ -30,6 +32,7 @@ import {
 import { useVideo, useDeleteVideo } from '@/hooks/useVideos'
 import { RemotionPreview } from '@/components/video/RemotionPreview'
 import { VideoDownloadButton } from '@/components/video/VideoDownloadButton'
+import { VariantGenerateModal } from '@/components/video/VariantGenerateModal'
 import type { CompositionId } from '@/hooks/useGenerateVideo'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -67,6 +70,7 @@ export default function VideoDetailPage({
   const router = useRouter()
   const { data: video, isLoading, error } = useVideo(id)
   const deleteVideo = useDeleteVideo()
+  const [variantModalOpen, setVariantModalOpen] = useState(false)
 
   const handleDelete = async () => {
     await deleteVideo.mutateAsync(id)
@@ -152,6 +156,16 @@ export default function VideoDetailPage({
               inputProps={inputProps}
               className="border-zinc-700"
             />
+          )}
+          {video.remote_url && (
+            <Button
+              variant="outline"
+              className="border-zinc-700"
+              onClick={() => setVariantModalOpen(true)}
+            >
+              <Layers className="mr-2 h-4 w-4" />
+              バリアント生成
+            </Button>
           )}
           {video.tiktok_video_id && (
             <Button variant="outline" className="border-zinc-700">
@@ -321,6 +335,18 @@ export default function VideoDetailPage({
           )}
         </div>
       </div>
+
+      {/* Variant Generate Modal */}
+      <VariantGenerateModal
+        open={variantModalOpen}
+        onOpenChange={setVariantModalOpen}
+        videoId={id}
+        videoTitle={video.title}
+        onSuccess={(variantIds) => {
+          // バリアント生成成功後、リロードして表示更新
+          router.refresh()
+        }}
+      />
     </div>
   )
 }

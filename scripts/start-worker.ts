@@ -499,11 +499,218 @@ pipelineWorker.on('failed', (job, error) => {
   console.error(`[Pipeline] Job ${job?.id} failed:`, error.message)
 })
 
+// バリアント生成ワーカー
+import {
+  processUGCVideo,
+  burnSubtitles,
+  generateProductSubtitles,
+  convertForPlatform,
+  type UGCEffect as UGCEffectType,
+} from '../src/lib/video/ffmpeg'
+
+interface VariantJobData {
+  sourceVideoId: string
+  sourceUrl: string
+  variantIds: string[]
+  userId: string
+  preset: 'tiktok_ab' | 'multi_platform' | 'full_test' | 'custom'
+  customVariants?: Array<{
+    name: string
+    ugcEffects?: {
+      effects: string[]
+      intensity: 'light' | 'medium' | 'heavy'
+    }
+    subtitles?: {
+      entries: Array<{
+        startTime: number
+        endTime: number
+        text: string
+      }>
+    }
+    platform?: 'tiktok' | 'instagram_reels' | 'youtube_shorts' | 'twitter'
+  }>
+  subtitleTexts?: string[]
+  duration: number
+}
+
+// プリセットごとのバリアント設定
+const VARIANT_PRESETS = {
+  tiktok_ab: [
+    { name: 'オリジナル' },
+    { name: 'UGC風ライト', ugcEffects: { effects: ['phone_quality'], intensity: 'light' as const } },
+    { name: 'UGC風ヘビー', ugcEffects: { effects: ['camera_shake', 'phone_quality', 'film_grain'], intensity: 'medium' as const } },
+    { name: 'ヴィンテージ', ugcEffects: { effects: ['vintage_filter', 'film_grain'], intensity: 'medium' as const } },
+  ],
+  multi_platform: [
+    { name: 'TikTok', platform: 'tiktok' as const },
+    { name: 'Instagram Reels', platform: 'instagram_reels' as const },
+    { name: 'YouTube Shorts', platform: 'youtube_shorts' as const },
+    { name: 'Twitter/X', platform: 'twitter' as const },
+  ],
+  full_test: [
+    { name: 'オリジナル' },
+    { name: 'UGCライト', ugcEffects: { effects: ['phone_quality'], intensity: 'light' as const } },
+    { name: 'UGCミディアム', ugcEffects: { effects: ['camera_shake', 'phone_quality'], intensity: 'medium' as const } },
+    { name: '字幕付き', subtitles: true },
+    { name: 'UGC+字幕', ugcEffects: { effects: ['phone_quality'], intensity: 'light' as const }, subtitles: true },
+  ],
+}
+
+async function processVariantJob(job: Job<VariantJobData>) {
+  const { sourceVideoId, sourceUrl, variantIds, userId, preset, customVariants, subtitleTexts, duration } = job.data
+  const tempDir = path.join(os.tmpdir(), `variants_${sourceVideoId}`)
+
+  try {
+    console.log(`[Variant] Processing job ${job.id} for ${variantIds.length} variants`)
+
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true })
+    }
+
+    // 元動画をダウンロード
+    const inputPath = path.join(tempDir, 'source.mp4')
+    await downloadVideo(sourceUrl, inputPath)
+    console.log(`[Variant] Downloaded source video`)
+
+    // バリアント設定を取得
+    const presetVariants = preset !== 'custom' ? VARIANT_PRESETS[preset] : undefined
+    const variants = customVariants || (presetVariants as typeof customVariants) || []
+
+    // 字幕エントリを生成
+    const subtitleEntries = subtitleTexts?.length
+      ? generateProductSubtitles(subtitleTexts, duration)
+      : undefined
+
+    // 各バリアントを処理
+    for (let i = 0; i < Math.min(variants.length, variantIds.length); i++) {
+      const variantId = variantIds[i]
+      const variantConfig = variants[i]
+
+      try {
+        console.log(`[Variant] Processing variant ${i + 1}/${variants.length}: ${variantConfig.name}`)
+        await updateVideoProgress(variantId, 10 + (i * 80 / variants.length), `${variantConfig.name}を処理中...`)
+
+        let currentPath = inputPath
+        let needsCleanup: string[] = []
+
+        // UGC加工
+        if (variantConfig.ugcEffects) {
+          const ugcOutputPath = path.join(tempDir, `variant_${i}_ugc.mp4`)
+          await processUGCVideo({
+            inputPath: currentPath,
+            outputPath: ugcOutputPath,
+            effects: variantConfig.ugcEffects.effects as UGCEffectType[],
+            intensity: variantConfig.ugcEffects.intensity,
+          })
+          if (currentPath !== inputPath) needsCleanup.push(currentPath)
+          currentPath = ugcOutputPath
+          console.log(`[Variant] Applied UGC effects`)
+        }
+
+        // 字幕追加
+        const needsSubtitles = (variantConfig as { subtitles?: boolean | { entries: unknown[] } }).subtitles
+        if (needsSubtitles && subtitleEntries) {
+          const subtitleOutputPath = path.join(tempDir, `variant_${i}_sub.mp4`)
+          await burnSubtitles({
+            inputPath: currentPath,
+            outputPath: subtitleOutputPath,
+            subtitles: subtitleEntries,
+          })
+          if (currentPath !== inputPath) needsCleanup.push(currentPath)
+          currentPath = subtitleOutputPath
+          console.log(`[Variant] Added subtitles`)
+        }
+
+        // プラットフォーム最適化
+        if (variantConfig.platform) {
+          const platformOutputPath = path.join(tempDir, `variant_${i}_platform.mp4`)
+          await convertForPlatform(currentPath, platformOutputPath, variantConfig.platform)
+          if (currentPath !== inputPath) needsCleanup.push(currentPath)
+          currentPath = platformOutputPath
+          console.log(`[Variant] Optimized for ${variantConfig.platform}`)
+        }
+
+        // 最終出力パス
+        const finalOutputPath = path.join(tempDir, `variant_${i}_final.mp4`)
+        if (currentPath !== finalOutputPath) {
+          fs.copyFileSync(currentPath, finalOutputPath)
+        }
+
+        // アップロード
+        await updateVideoProgress(variantId, 80 + (i * 15 / variants.length), 'アップロード中...')
+        const videoUrl = await uploadToStorage(finalOutputPath, variantId, userId)
+
+        // 完了
+        await updateVideoStatus(variantId, 'ready', {
+          remote_url: videoUrl,
+          duration_seconds: duration,
+          progress: 100,
+          progress_message: '生成完了',
+        })
+
+        console.log(`[Variant] Variant ${i + 1} completed: ${variantConfig.name}`)
+
+        // 中間ファイルクリーンアップ
+        for (const p of needsCleanup) {
+          try { fs.unlinkSync(p) } catch {}
+        }
+
+      } catch (variantError) {
+        console.error(`[Variant] Failed to process variant ${i + 1}:`, variantError)
+        await updateVideoStatus(variantId, 'failed', {
+          progress: 0,
+          progress_message: '生成に失敗しました',
+        })
+      }
+    }
+
+    console.log(`[Variant] Job ${job.id} completed!`)
+    return { success: true, sourceVideoId, variantIds }
+
+  } catch (error) {
+    console.error(`[Variant] Job ${job.id} failed:`, error)
+    // 全バリアントを失敗に
+    for (const variantId of variantIds) {
+      await updateVideoStatus(variantId, 'failed', {
+        progress: 0,
+        progress_message: '生成に失敗しました',
+      })
+    }
+    throw error
+  } finally {
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true })
+      }
+    } catch (e) {
+      console.warn(`[Variant] Failed to cleanup: ${tempDir}`)
+    }
+  }
+}
+
+const variantWorker = new Worker('video-variants', processVariantJob, {
+  connection,
+  concurrency: 1, // FFmpeg処理のため同時実行数を制限
+})
+
+variantWorker.on('ready', () => {
+  console.log('[Variant] Worker is ready')
+})
+
+variantWorker.on('completed', (job) => {
+  console.log(`[Variant] Job ${job.id} completed`)
+})
+
+variantWorker.on('failed', (job, error) => {
+  console.error(`[Variant] Job ${job?.id} failed:`, error.message)
+})
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('[Worker] Shutting down...')
   await worker.close()
   await pipelineWorker.close()
+  await variantWorker.close()
   process.exit(0)
 })
 
@@ -511,5 +718,6 @@ process.on('SIGINT', async () => {
   console.log('[Worker] Shutting down...')
   await worker.close()
   await pipelineWorker.close()
+  await variantWorker.close()
   process.exit(0)
 })
