@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Video,
   Package,
@@ -117,7 +118,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               {statsLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-pink-500" />
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-24 bg-zinc-800" />
+                  <Skeleton className="h-4 w-16 bg-zinc-800" />
+                </div>
               ) : (
                 <>
                   <div className="text-2xl font-bold text-white">{stat.value}</div>
@@ -167,8 +171,19 @@ export default function DashboardPage() {
                 </Button>
               </div>
             ) : videosLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-lg bg-zinc-700" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-32 bg-zinc-700" />
+                        <Skeleton className="h-3 w-20 bg-zinc-700" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-6 w-16 rounded-full bg-zinc-700" />
+                  </div>
+                ))}
               </div>
             ) : recentVideos.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -254,8 +269,22 @@ export default function DashboardPage() {
                 </Button>
               </div>
             ) : productsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-10 w-10 rounded-lg bg-zinc-700" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-28 bg-zinc-700" />
+                        <Skeleton className="h-3 w-16 bg-zinc-700" />
+                      </div>
+                    </div>
+                    <div className="text-right space-y-1">
+                      <Skeleton className="h-5 w-20 bg-zinc-700 ml-auto" />
+                      <Skeleton className="h-3 w-8 bg-zinc-700 ml-auto" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : topProducts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">

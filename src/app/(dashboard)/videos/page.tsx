@@ -30,11 +30,13 @@ import {
   Loader2,
   Trash2,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { VideoGenerateModal } from '@/components/video/VideoGenerateModal'
 import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
 import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 import type { VideoWithProduct } from '@/lib/api/videos'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -64,7 +66,7 @@ export default function VideosPage() {
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null)
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
 
-  const { data: videos = [], isLoading, error } = useVideos()
+  const { data: videos = [], isLoading, error, refetch } = useVideos()
   const deleteVideo = useDeleteVideo()
 
   const filteredVideos = useMemo(() => {
@@ -90,7 +92,12 @@ export default function VideosPage() {
 
   const handleDelete = async () => {
     if (deletingVideoId) {
-      await deleteVideo.mutateAsync(deletingVideoId)
+      try {
+        await deleteVideo.mutateAsync(deletingVideoId)
+        toast.success('動画を削除しました')
+      } catch {
+        toast.error('削除に失敗しました')
+      }
       setDeletingVideoId(null)
     }
   }
@@ -172,7 +179,16 @@ export default function VideosPage() {
           ) : error ? (
             <Card className="bg-zinc-900 border-zinc-800">
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                <p className="text-red-500">データの読み込みに失敗しました</p>
+                <p className="text-red-500 mb-2">データの読み込みに失敗しました</p>
+                <p className="text-sm text-zinc-500 mb-4">{String(error)}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => refetch()}
+                  className="border-zinc-700 hover:bg-zinc-800"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  再読み込み
+                </Button>
               </CardContent>
             </Card>
           ) : filteredVideos.length === 0 ? (

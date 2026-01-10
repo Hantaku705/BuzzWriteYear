@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, X, Plus, Loader2, Link, Sparkles } from 'lucide-react'
+import { Upload, X, Plus, Loader2, Link, Sparkles, CheckCircle } from 'lucide-react'
 import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts'
 import { useOptimizedUpload } from '@/hooks/useOptimizedUpload'
 import { useScrape } from '@/hooks/useScrape'
+import { toast } from 'sonner'
 
 interface ProductFormProps {
   onSuccess?: () => void
@@ -66,6 +67,10 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
       if (result.category) setCategory(result.category)
       if (result.brand) setBrand(result.brand)
       if (result.targetAudience) setTargetAudience(result.targetAudience)
+
+      toast.success('商品情報を自動入力しました', {
+        description: result.name ? `「${result.name}」の情報を取得しました` : undefined,
+      })
     }
   }
 
@@ -99,12 +104,17 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
     try {
       if (productId) {
         await updateProduct.mutateAsync({ id: productId, product: productData })
+        toast.success('商品を更新しました')
       } else {
         await createProduct.mutateAsync(productData)
+        toast.success('商品を保存しました', {
+          description: '動画生成ページから動画を作成できます',
+        })
       }
       onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存に失敗しました')
+      toast.error('保存に失敗しました')
     }
   }
 
@@ -327,6 +337,7 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
                   const result = await upload(file)
                   if (result?.image?.url) {
                     setImages([...images, result.image.url])
+                    toast.success('画像をアップロードしました')
                   }
                 }
                 e.target.value = ''

@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Search, Package, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { Plus, Search, Package, Pencil, Trash2, Loader2, RefreshCw } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +41,7 @@ import { ProductForm } from '@/components/product/ProductForm'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
 import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 import type { Product } from '@/types/database'
 
 export default function ProductsPage() {
@@ -50,7 +51,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
 
-  const { data: products = [], isLoading, error } = useProducts()
+  const { data: products = [], isLoading, error, refetch } = useProducts()
   const deleteProduct = useDeleteProduct()
 
   const filteredProducts = products.filter((product) =>
@@ -69,7 +70,12 @@ export default function ProductsPage() {
 
   const handleDelete = async () => {
     if (deletingProductId) {
-      await deleteProduct.mutateAsync(deletingProductId)
+      try {
+        await deleteProduct.mutateAsync(deletingProductId)
+        toast.success('商品を削除しました')
+      } catch {
+        toast.error('削除に失敗しました')
+      }
       setDeletingProductId(null)
     }
   }
@@ -170,8 +176,16 @@ export default function ProductsPage() {
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-red-500">データの読み込みに失敗しました</p>
-              <p className="text-sm text-zinc-500 mt-1">{String(error)}</p>
+              <p className="text-red-500 mb-2">データの読み込みに失敗しました</p>
+              <p className="text-sm text-zinc-500 mb-4">{String(error)}</p>
+              <Button
+                variant="outline"
+                onClick={() => refetch()}
+                className="border-zinc-700 hover:bg-zinc-800"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                再読み込み
+              </Button>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

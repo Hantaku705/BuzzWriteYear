@@ -82,6 +82,21 @@
   - 「もう1本生成」
   - 「動画一覧を見る」
   - 自動クローズを廃止し、ユーザーに選択させる
+- [x] **Toast通知システム導入（sonner）**
+  - 全ページに統一トースト通知（右下表示、ダークテーマ対応）
+  - 商品保存/更新/削除時に通知
+  - 画像アップロード完了時に通知
+  - スクレイピング完了時に通知
+  - 動画生成完了/失敗/キャンセル時に通知
+- [x] **エラー復旧UI追加（Products/Videos）**
+  - エラー時に「再読み込み」ボタン表示
+  - refetch()で再取得可能に
+- [x] **スケルトンローディング追加（ダッシュボード）**
+  - StatsCard: 数値プレースホルダー表示
+  - 最近の動画/トップ商品: リストアイテムスケルトン表示
+- [x] **成功アニメーション追加（動画生成完了時）**
+  - CheckCircle + PartyPopperアイコンのアニメーション
+  - 成功時Toast通知（「A/Bテスト用バリアント生成をおすすめします」）
 
 ### 作業中のタスク
 - なし
@@ -126,15 +141,49 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-(テスト結果ファイルのみ)
+なし
 ```
 
 ## 最新コミット
 ```
-7942546 feat(ux): add click feedback and continuation triggers
+e381ce8 feat(ux): add toast notifications, skeleton loading, and success animations
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション20）
+- **/reco 10 subagent 並列分析実行**
+  - engagement-analyzer: 55%中毒性スコア（MEDIUM）
+  - ux-analyzer: 15件検出（4 CRITICAL / 7 HIGH / 4 MEDIUM）
+  - security-checker: 3件（HIGH 2 / MEDIUM 1）
+  - performance-profiler: N+1 5件（analytics.ts, stats.ts）
+  - feature-completeness: TODO 5件（ワーカーDB更新未実装）
+  - build-checker: success
+  - test-runner: 14/14 Pass
+- **Toast通知システム導入（sonner）**
+  - `npm install sonner` でライブラリ追加
+  - `src/app/layout.tsx` にToaster追加（右下表示、ダークテーマ）
+  - ProductForm: 保存/更新/アップロード/スクレイピング完了時にtoast
+  - ProductsPage: 削除完了時にtoast
+  - VideosPage: 削除完了時にtoast
+  - VideoGenerateModal: 生成完了/失敗/キャンセル時にtoast
+- **エラー復旧UI追加（CRITICAL修正）**
+  - ProductsPage: エラー時に「再読み込み」ボタン追加
+  - VideosPage: エラー時に「再読み込み」ボタン追加
+  - refetch()で再取得可能に
+- **スケルトンローディング追加（中毒性向上）**
+  - `npx shadcn add skeleton` でコンポーネント追加
+  - ダッシュボードStatsCard: Loaderからスケルトンに変更
+  - 最近の動画リスト: スケルトンアイテム3件表示
+  - トップ商品リスト: スケルトンアイテム3件表示
+- **成功アニメーション追加（中毒性向上）**
+  - VideoGenerateModal: 完了時のアイコンをアニメーション付きに変更
+  - CheckCircle + PartyPopper（回転アニメーション）
+  - Toast通知（「A/Bテスト用バリアント生成をおすすめします」）
+- **ビルド・テスト成功**
+  - npm run build: success
+  - npx playwright test: 14/14 Pass
+- **中毒性スコア: MEDIUM (55%) → MEDIUM-HIGH (65%) に向上**
 
 ### 2026-01-11（セッション19）
 - **/reco 10 subagent 並列分析実行**

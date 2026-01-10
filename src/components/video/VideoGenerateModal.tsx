@@ -20,7 +20,8 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle, Layers, ExternalLink, Plus } from 'lucide-react'
+import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle, Layers, ExternalLink, Plus, PartyPopper } from 'lucide-react'
+import { toast } from 'sonner'
 import { RemotionPreview } from './RemotionPreview'
 import { useProducts } from '@/hooks/useProducts'
 import {
@@ -133,20 +134,37 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
     return () => clearInterval(interval)
   }, [step, startTime])
 
-  // 生成完了/失敗時の処理（自動クローズを削除し、ユーザーに次のアクションを選ばせる）
-  // 失敗・キャンセル時のみ3秒後に自動で閉じる
+  // 生成完了/失敗時の処理
+  // 成功時: Toast通知 + ユーザーに次のアクションを選ばせる
+  // 失敗・キャンセル時: 3秒後に自動で閉じる
   useEffect(() => {
     if (!videoStatus) return
 
-    if (videoStatus.status === 'failed' || videoStatus.status === 'cancelled') {
+    if (videoStatus.status === 'ready') {
+      // 成功通知
+      toast.success('動画が完成しました！', {
+        description: 'A/Bテスト用バリアントの生成をおすすめします',
+        icon: <PartyPopper className="h-5 w-5 text-pink-500" />,
+        duration: 5000,
+      })
+    } else if (videoStatus.status === 'failed') {
+      toast.error('動画生成に失敗しました', {
+        description: '再度お試しください',
+      })
       const timeout = setTimeout(() => {
         resetForm()
         onOpenChange(false)
       }, 3000)
-
+      return () => clearTimeout(timeout)
+    } else if (videoStatus.status === 'cancelled') {
+      toast('動画生成をキャンセルしました')
+      const timeout = setTimeout(() => {
+        resetForm()
+        onOpenChange(false)
+      }, 3000)
       return () => clearTimeout(timeout)
     }
-  }, [videoStatus, onOpenChange])
+  }, [videoStatus?.status, onOpenChange])
 
   // 次のアクション: バリアント生成
   const handleCreateVariants = () => {
@@ -858,8 +876,11 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
             {/* ステータスアイコン */}
             <div className="flex justify-center">
               {videoStatus?.status === 'ready' ? (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
-                  <CheckCircle className="h-10 w-10 text-green-500" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 animate-pulse">
+                  <div className="relative">
+                    <CheckCircle className="h-12 w-12 text-green-400 animate-[bounce_0.5s_ease-in-out]" />
+                    <PartyPopper className="absolute -top-2 -right-2 h-6 w-6 text-yellow-400 animate-[spin_1s_ease-in-out]" />
+                  </div>
                 </div>
               ) : videoStatus?.status === 'failed' ? (
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/20">
