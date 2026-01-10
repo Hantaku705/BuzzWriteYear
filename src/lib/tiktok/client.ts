@@ -319,3 +319,90 @@ export async function getCreatorInfo(accessToken: string): Promise<{
   const data = await response.json()
   return data.data
 }
+
+// ビデオ統計情報
+export interface VideoStats {
+  id: string
+  title?: string
+  create_time: number
+  cover_image_url?: string
+  share_url?: string
+  view_count: number
+  like_count: number
+  comment_count: number
+  share_count: number
+  download_count?: number
+  duration?: number
+}
+
+// ユーザーのビデオ一覧取得
+export async function listUserVideos(
+  accessToken: string,
+  options: {
+    cursor?: number
+    max_count?: number
+  } = {}
+): Promise<{
+  videos: VideoStats[]
+  cursor: number
+  has_more: boolean
+}> {
+  const { cursor = 0, max_count = 20 } = options
+
+  const response = await fetch(
+    `${TIKTOK_API_BASE}/video/list/?fields=id,title,create_time,cover_image_url,share_url,view_count,like_count,comment_count,share_count,download_count,duration`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cursor,
+        max_count,
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(`TikTok video list error: ${JSON.stringify(error)}`)
+  }
+
+  const data = await response.json()
+  return {
+    videos: data.data.videos || [],
+    cursor: data.data.cursor || 0,
+    has_more: data.data.has_more || false,
+  }
+}
+
+// 特定ビデオの統計情報取得
+export async function getVideoStats(
+  accessToken: string,
+  videoIds: string[]
+): Promise<VideoStats[]> {
+  const response = await fetch(
+    `${TIKTOK_API_BASE}/video/query/?fields=id,title,create_time,cover_image_url,share_url,view_count,like_count,comment_count,share_count,download_count,duration`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        filters: {
+          video_ids: videoIds,
+        },
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(`TikTok video query error: ${JSON.stringify(error)}`)
+  }
+
+  const data = await response.json()
+  return data.data.videos || []
+}

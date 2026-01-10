@@ -33,6 +33,7 @@
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.6.0",
     "remotion": "^4.0.404",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.5",
