@@ -5,6 +5,7 @@ export interface VideoWithProduct extends Video {
   product?: {
     id: string
     name: string
+    price: number
     images: string[]
   } | null
 }
@@ -16,7 +17,7 @@ export async function getVideos(): Promise<VideoWithProduct[]> {
     .select(
       `
       *,
-      product:products(id, name, images)
+      product:products(id, name, price, images)
     `
     )
     .order('created_at', { ascending: false })
@@ -32,7 +33,7 @@ export async function getVideosByStatus(status: string): Promise<VideoWithProduc
     .select(
       `
       *,
-      product:products(id, name, images)
+      product:products(id, name, price, images)
     `
     )
     .eq('status', status)
@@ -49,7 +50,7 @@ export async function getVideo(id: string): Promise<VideoWithProduct | null> {
     .select(
       `
       *,
-      product:products(id, name, images)
+      product:products(id, name, price, images)
     `
     )
     .eq('id', id)

@@ -32,6 +32,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
+import { VideoGenerateModal } from '@/components/video/VideoGenerateModal'
 import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
 import { useAuth } from '@/hooks/useAuth'
 import type { VideoWithProduct } from '@/lib/api/videos'
@@ -49,6 +50,7 @@ const contentTypeLabels: Record<string, string> = {
   product_intro: '商品紹介',
   before_after: 'Before/After',
   review: 'レビュー風',
+  feature_list: '特徴リスト',
   avatar: 'AIアバター',
   ugc: 'UGC風',
   unboxing: '開封動画',
@@ -60,6 +62,7 @@ export default function VideosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null)
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
 
   const { data: videos = [], isLoading, error } = useVideos()
   const deleteVideo = useDeleteVideo()
@@ -127,7 +130,10 @@ export default function VideosPage() {
           <h1 className="text-2xl font-bold text-white">動画管理</h1>
           <p className="text-zinc-400">生成した動画を管理・投稿</p>
         </div>
-        <Button className="bg-pink-500 hover:bg-pink-600">
+        <Button
+          className="bg-pink-500 hover:bg-pink-600"
+          onClick={() => setIsGenerateModalOpen(true)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           動画を生成
         </Button>
@@ -195,7 +201,10 @@ export default function VideosPage() {
                     >
                       商品を追加
                     </Button>
-                    <Button className="bg-pink-500 hover:bg-pink-600">
+                    <Button
+                      className="bg-pink-500 hover:bg-pink-600"
+                      onClick={() => setIsGenerateModalOpen(true)}
+                    >
                       <Plus className="mr-2 h-4 w-4" />
                       最初の動画を作成
                     </Button>
@@ -210,6 +219,7 @@ export default function VideosPage() {
                   key={video.id}
                   video={video}
                   onDelete={() => setDeletingVideoId(video.id)}
+                  onView={() => router.push(`/videos/${video.id}`)}
                 />
               ))}
             </div>
@@ -285,6 +295,12 @@ export default function VideosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Video Generate Modal */}
+      <VideoGenerateModal
+        open={isGenerateModalOpen}
+        onOpenChange={setIsGenerateModalOpen}
+      />
     </div>
   )
 }
@@ -292,15 +308,20 @@ export default function VideosPage() {
 function VideoCard({
   video,
   onDelete,
+  onView,
 }: {
   video: VideoWithProduct
   onDelete: () => void
+  onView: () => void
 }) {
   const config = statusConfig[video.status] || statusConfig.draft
   const Icon = config.icon
 
   return (
-    <Card className="bg-zinc-900 border-zinc-800 overflow-hidden group">
+    <Card
+      className="bg-zinc-900 border-zinc-800 overflow-hidden group cursor-pointer"
+      onClick={onView}
+    >
       <div className="relative aspect-[9/16] bg-zinc-800">
         {video.product?.images?.[0] ? (
           <img
@@ -314,7 +335,15 @@ function VideoCard({
           </div>
         )}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button size="icon" variant="secondary" className="h-10 w-10">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="h-10 w-10"
+            onClick={(e) => {
+              e.stopPropagation()
+              onView()
+            }}
+          >
             <Play className="h-5 w-5" />
           </Button>
           {video.tiktok_video_id && (

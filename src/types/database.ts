@@ -64,6 +64,7 @@ export type Database = {
           local_path: string | null
           remote_url: string | null
           duration_seconds: number | null
+          input_props: Json | null
           created_at: string
           posted_at: string | null
         }
@@ -74,12 +75,13 @@ export type Database = {
           template_id?: string | null
           title: string
           content_type: string
-          generation_method: string
+          generation_method?: string
           status?: string
           tiktok_video_id?: string | null
           local_path?: string | null
           remote_url?: string | null
           duration_seconds?: number | null
+          input_props?: Json | null
           created_at?: string
           posted_at?: string | null
         }
@@ -96,6 +98,7 @@ export type Database = {
           local_path?: string | null
           remote_url?: string | null
           duration_seconds?: number | null
+          input_props?: Json | null
           created_at?: string
           posted_at?: string | null
         }
