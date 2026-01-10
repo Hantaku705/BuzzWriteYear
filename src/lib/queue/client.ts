@@ -1,0 +1,158 @@
+import { Queue, Worker, Job, ConnectionOptions } from 'bullmq'
+
+// Redis接続オプション（環境変数から取得）
+const getRedisConnection = (): ConnectionOptions => {
+  const redisUrl = process.env.REDIS_URL
+  if (!redisUrl) {
+    console.warn('REDIS_URL not set, using default localhost')
+    return {
+      host: 'localhost',
+      port: 6379,
+      maxRetriesPerRequest: null,
+    }
+  }
+  // Parse Redis URL for connection options
+  try {
+    const url = new URL(redisUrl)
+    return {
+      host: url.hostname,
+      port: parseInt(url.port) || 6379,
+      password: url.password || undefined,
+      username: url.username || undefined,
+      maxRetriesPerRequest: null,
+    }
+  } catch {
+    // If URL parsing fails, return localhost defaults
+    console.warn('Failed to parse REDIS_URL, using default localhost')
+    return {
+      host: 'localhost',
+      port: 6379,
+      maxRetriesPerRequest: null,
+    }
+  }
+}
+
+// キュー名
+export const QUEUE_NAMES = {
+  VIDEO_GENERATION: 'video-generation',
+  TIKTOK_POSTING: 'tiktok-posting',
+  ANALYTICS_COLLECTION: 'analytics-collection',
+} as const
+
+// ジョブデータ型
+export interface VideoGenerationJobData {
+  videoId: string
+  userId: string
+  productId: string
+  templateId: string
+  compositionId: 'ProductIntro' | 'BeforeAfter' | 'ReviewText' | 'FeatureList'
+  inputProps: Record<string, unknown>
+}
+
+export interface TikTokPostingJobData {
+  videoId: string
+  userId: string
+  videoUrl: string
+  title: string
+  description?: string
+  scheduledAt?: string
+}
+
+export interface AnalyticsCollectionJobData {
+  videoId: string
+  userId: string
+  tiktokVideoId: string
+}
+
+// キューインスタンス（遅延初期化）
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let videoGenerationQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let tiktokPostingQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let analyticsQueue: Queue | null = null
+
+export const getVideoGenerationQueue = () => {
+  if (!videoGenerationQueue) {
+    videoGenerationQueue = new Queue(
+      QUEUE_NAMES.VIDEO_GENERATION,
+      { connection: getRedisConnection() }
+    )
+  }
+  return videoGenerationQueue
+}
+
+export const getTikTokPostingQueue = () => {
+  if (!tiktokPostingQueue) {
+    tiktokPostingQueue = new Queue(
+      QUEUE_NAMES.TIKTOK_POSTING,
+      { connection: getRedisConnection() }
+    )
+  }
+  return tiktokPostingQueue
+}
+
+export const getAnalyticsQueue = () => {
+  if (!analyticsQueue) {
+    analyticsQueue = new Queue(
+      QUEUE_NAMES.ANALYTICS_COLLECTION,
+      { connection: getRedisConnection() }
+    )
+  }
+  return analyticsQueue
+}
+
+// ジョブ追加ヘルパー
+export const addVideoGenerationJob = async (
+  data: VideoGenerationJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getVideoGenerationQueue()
+  return queue.add('generate', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 5000,
+    },
+  })
+}
+
+export const addTikTokPostingJob = async (
+  data: TikTokPostingJobData,
+  options?: { delay?: number }
+) => {
+  const queue = getTikTokPostingQueue()
+  return queue.add('post', data, {
+    delay: options?.delay,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
+    },
+  })
+}
+
+export const addAnalyticsCollectionJob = async (
+  data: AnalyticsCollectionJobData
+) => {
+  const queue = getAnalyticsQueue()
+  return queue.add('collect', data, {
+    repeat: {
+      every: 1000 * 60 * 60 * 6, // 6時間ごと
+    },
+    attempts: 3,
+  })
+}
+
+// ワーカー作成ヘルパー
+export const createWorker = <T>(
+  queueName: string,
+  processor: (job: Job<T>) => Promise<unknown>
+) => {
+  return new Worker<T>(queueName, processor, {
+    connection: getRedisConnection(),
+    concurrency: 2,
+  })
+}
