@@ -45,6 +45,9 @@ npm run build
 
 # Remotion Studio
 npm run remotion:studio
+
+# E2Eテスト実行
+npx playwright test
 ```
 
 ### 環境変数
@@ -61,6 +64,12 @@ TIKTOK_CLIENT_SECRET=
 HEYGEN_API_KEY=
 REDIS_URL=
 ```
+
+### Supabaseセットアップ
+
+1. Supabaseプロジェクト作成
+2. SQL Editorで `supabase/combined_migration.sql` 実行
+3. `.env.local` に認証情報設定
 
 ---
 
@@ -84,6 +93,9 @@ REDIS_URL=
 | `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
 | `supabase/migrations/` | DBマイグレーション |
+| `supabase/combined_migration.sql` | 統合マイグレーション（SQL Editor用） |
+| `tests/e2e/` | Playwright E2Eテスト |
+| `playwright.config.ts` | Playwright設定 |
 
 ---
 
