@@ -63,6 +63,7 @@ TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
 HEYGEN_API_KEY=
 KLING_API_KEY=
+GEMINI_API_KEY=
 REDIS_URL=
 ```
 
@@ -98,6 +99,7 @@ REDIS_URL=
 | `src/lib/video/ffmpeg/` | FFmpeg UGC加工 |
 | `src/lib/video/heygen/` | HeyGen APIクライアント |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
+| `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
 | `src/remotion/` | Remotionテンプレート |
 | `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
@@ -163,6 +165,8 @@ REDIS_URL=
 | エンドポイント | メソッド | 説明 |
 |----------------|----------|------|
 | `/api/videos/generate` | POST | 動画生成ジョブ作成 |
+| `/api/videos/kling` | POST | Kling AI動画生成 |
+| `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
 | `/api/auth/logout` | POST | ログアウト |

@@ -43,6 +43,7 @@
 - [x] **動画ダウンロード機能（VideoDownloadButton）**
 - [x] **Kling AI動画生成機能**
 - [x] **Kling AI E2Eテスト（全5テスト合格）**
+- [x] **商品URL自動入力機能（スクレイピング + LLM分析）**
 
 ### 作業中のタスク
 - なし
@@ -75,15 +76,33 @@
 
 ## 未コミット変更
 ```
-なし
+?? tests/screenshots/kling-test-video.mp4
 ```
 
 ## 最新コミット
 ```
-7d99ea1 test: Kling AI E2Eテスト追加（全5テスト合格）
+cbec333 feat: 商品URL自動入力機能を実装
 ```
 
 ## セッション履歴
+
+### 2026-01-10（セッション8）
+- **商品URL自動入力機能を実装**
+  - スクレイパーライブラリ作成（src/lib/scraper/）
+    - Amazon/楽天/一般サイト対応
+    - cheerioでHTML解析
+    - JSON-LD、OGP、汎用セレクターから抽出
+  - Gemini 2.0 Flash LLM分析
+    - 商品名を簡潔化
+    - カテゴリ、ブランド名、ターゲット層を自動抽出
+    - 特徴・USPを5つに整理
+  - APIエンドポイント（/api/scrape）
+  - useScrapeフック
+  - ProductFormにURL入力UI追加
+    - 「自動入力」ボタン
+    - カテゴリ/ブランド/ターゲット層フィールド追加
+  - Vercel環境変数にGEMINI_API_KEY追加
+  - 本番デプロイ完了
 
 ### 2026-01-10（セッション7）
 - **Kling AI E2Eテスト追加（全5テスト合格）**
