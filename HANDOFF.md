@@ -79,7 +79,7 @@
 
 ## 最新コミット
 ```
-28bbbbb feat: Kling AI動画生成機能を追加
+43aaa84 docs: CLAUDE.mdにKling AI情報を追加
 ```
 
 ## セッション履歴
