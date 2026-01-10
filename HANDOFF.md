@@ -75,15 +75,12 @@
 
 ## 未コミット変更
 ```
- M src/app/(dashboard)/videos/page.tsx
-?? tests/e2e/kling-generation.spec.ts
-?? tests/screenshots/kling-mode-selection.png
-?? tests/screenshots/kling-product-selection.png
+なし
 ```
 
 ## 最新コミット
 ```
-a38670a docs: HANDOFF.md最新コミット更新
+7d99ea1 test: Kling AI E2Eテスト追加（全5テスト合格）
 ```
 
 ## セッション履歴
