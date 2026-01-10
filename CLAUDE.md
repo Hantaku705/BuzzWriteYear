@@ -123,6 +123,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/lib/image/` | 画像処理（sharp: リサイズ、WebP変換、サムネイル生成） |
 | `src/lib/video/ffmpeg/` | FFmpeg動画処理（UGC加工、トリミング、結合、字幕、コーデック変換） |
 | `src/lib/video/pipeline.ts` | 動画処理パイプライン（Remotion→FFmpeg→最適化） |
+| `src/lib/video/variants.ts` | A/Bテスト用バリアント一括生成 |
 | `src/lib/video/heygen/` | HeyGen APIクライアント |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
@@ -168,6 +169,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | heygen-generation | HeyGen動画生成 |
 | kling-generation | Kling AI動画生成 |
 | video-pipeline | 動画パイプライン処理 |
+| video-variants | A/Bテストバリアント生成 |
 | tiktok-posting | TikTok投稿 |
 | analytics-collection | 分析データ収集 |
 
@@ -198,6 +200,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
 | `/api/images/optimize` | POST | 画像最適化・サムネイル生成（sharp） |
 | `/api/videos/pipeline` | POST | 動画パイプライン処理（UGC+字幕+最適化） |
+| `/api/videos/variants` | POST/GET | A/Bテスト用バリアント一括生成 |
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
 | `/api/auth/logout` | POST | ログアウト |

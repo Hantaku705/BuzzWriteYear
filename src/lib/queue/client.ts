@@ -43,6 +43,7 @@ export const QUEUE_NAMES = {
   TIKTOK_POSTING: 'tiktok-posting',
   ANALYTICS_COLLECTION: 'analytics-collection',
   VIDEO_PIPELINE: 'video-pipeline',
+  VIDEO_VARIANTS: 'video-variants',
 } as const
 
 // ジョブデータ型
@@ -131,6 +132,31 @@ export interface PipelineJobData {
   }
 }
 
+export interface VariantJobData {
+  sourceVideoId: string
+  sourceUrl: string
+  variantIds: string[]
+  userId: string
+  preset: 'tiktok_ab' | 'multi_platform' | 'full_test' | 'custom'
+  customVariants?: Array<{
+    name: string
+    ugcEffects?: {
+      effects: string[]
+      intensity: 'light' | 'medium' | 'heavy'
+    }
+    subtitles?: {
+      entries: Array<{
+        startTime: number
+        endTime: number
+        text: string
+      }>
+    }
+    platform?: 'tiktok' | 'instagram_reels' | 'youtube_shorts' | 'twitter'
+  }>
+  subtitleTexts?: string[]
+  duration: number
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
@@ -146,6 +172,8 @@ let tiktokPostingQueue: Queue | null = null
 let analyticsQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let pipelineQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let variantQueue: Queue | null = null
 
 export const getVideoGenerationQueue = () => {
   if (!videoGenerationQueue) {
@@ -215,6 +243,16 @@ export const getPipelineQueue = () => {
     )
   }
   return pipelineQueue
+}
+
+export const getVariantQueue = () => {
+  if (!variantQueue) {
+    variantQueue = new Queue(
+      QUEUE_NAMES.VIDEO_VARIANTS,
+      { connection: getRedisConnection() }
+    )
+  }
+  return variantQueue
 }
 
 // ジョブ追加ヘルパー
@@ -321,6 +359,22 @@ export const addPipelineJob = async (
     backoff: {
       type: 'exponential',
       delay: 10000,
+    },
+  })
+}
+
+export const addVariantJob = async (
+  data: VariantJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getVariantQueue()
+  return queue.add('generate', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 2, // バリアントは複数あるのでリトライ少なめ
+    backoff: {
+      type: 'exponential',
+      delay: 15000,
     },
   })
 }
