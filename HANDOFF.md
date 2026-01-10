@@ -41,6 +41,7 @@
 - [x] **動画詳細ページ（/videos/[id]）**
 - [x] **Vercelデプロイ（buzzwriteyear.vercel.app）**
 - [x] **動画ダウンロード機能（VideoDownloadButton）**
+- [x] **Kling AI動画生成機能**
 
 ### 作業中のタスク
 - なし
@@ -57,6 +58,7 @@
 
 ### オプション設定（機能拡張）
 - **Redis (Upstash)**: `REDIS_URL` を設定するとジョブキューが有効に
+- **Kling AI**: `KLING_API_KEY` でAI動画生成機能が有効に（PiAPI経由、$0.16〜/動画）
 - **TikTok API**: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` で投稿機能が有効に
 - **HeyGen API**: `HEYGEN_API_KEY` でAIアバター機能が有効に
 
@@ -77,7 +79,7 @@
 
 ## 最新コミット
 ```
-3ce58f7 feat: 動画ダウンロード機能を追加
+28bbbbb feat: Kling AI動画生成機能を追加
 ```
 
 ## セッション履歴
@@ -88,6 +90,16 @@
   - 動画詳細ページにダウンロードボタン追加
   - remote_urlがある場合は直接ダウンロード
   - ない場合はRemotion Studioでの書き出しガイドを表示（CLIコマンドコピー機能付き）
+- **Kling AI動画生成機能を実装**
+  - Kling APIクライアント（PiAPI経由）: Image-to-Video / Text-to-Video対応
+  - プロンプトプリセット7種類（商品紹介、使用シーン、開封、クローズアップ等）
+  - BullMQにKLING_GENERATIONキュー追加
+  - Klingワーカー（非同期動画生成、Supabase Storage保存）
+  - /api/videos/kling APIエンドポイント
+  - VideoGenerateModalにAI生成モード追加
+    - 「AI生成（Kling）」vs「テンプレート（Remotion）」選択UI
+    - スタイルプリセット選択、カスタムプロンプト入力
+    - 5秒/10秒選択（料金表示付き）
 
 ### 2026-01-10（セッション5）
 - **Vercelデプロイ完了**: https://buzzwriteyear.vercel.app
