@@ -40,9 +40,10 @@
 - [x] **useGenerateVideoフック（Supabase保存）**
 - [x] **動画詳細ページ（/videos/[id]）**
 - [x] **Vercelデプロイ（buzzwriteyear.vercel.app）**
+- [x] **動画ダウンロード機能（VideoDownloadButton）**
 
 ### 作業中のタスク
-- なし（全6フェーズ完了、環境セットアップ完了、E2Eテスト完了）
+- なし
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -76,10 +77,17 @@
 
 ## 最新コミット
 ```
-3d5c36b feat: 動画生成機能を実装
+3ce58f7 feat: 動画ダウンロード機能を追加
 ```
 
 ## セッション履歴
+
+### 2026-01-10（セッション6）
+- **動画ダウンロード機能を実装**
+  - VideoDownloadButtonコンポーネント作成
+  - 動画詳細ページにダウンロードボタン追加
+  - remote_urlがある場合は直接ダウンロード
+  - ない場合はRemotion Studioでの書き出しガイドを表示（CLIコマンドコピー機能付き）
 
 ### 2026-01-10（セッション5）
 - **Vercelデプロイ完了**: https://buzzwriteyear.vercel.app
