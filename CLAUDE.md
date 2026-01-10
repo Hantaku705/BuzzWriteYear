@@ -246,6 +246,8 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/reco` | 並列分析から最適タスクを自動実行（5 subagent並列） |
 | `/verify-worker-deployment` | ワーカーデプロイ検証（ローカル〜本番） |
 | `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
+| `/deploy-verify` | Vercel+Render統合デプロイ検証 |
+| `/test-and-fix` | テスト実行・失敗分析・自動修正 |
 | `/handoff` | セッション終了時の書き出し |
 | `/resume` | セッション再開時の読み込み |
 | `/quick-commit` | 高速コミット |

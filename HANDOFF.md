@@ -56,6 +56,8 @@
 - [x] **/verify-worker-deployment スキル作成**
 - [x] **/validate-api-integration スキル作成**
 - [x] **video-pipeline-analyzer Subagent作成**
+- [x] **/test-and-fix スキル拡張（14行→122行、失敗分析・自動修正機能）**
+- [x] **/deploy-verify スキル新規作成（Vercel+Render統合デプロイ検証）**
 
 ### 作業中のタスク
 - なし
@@ -100,15 +102,35 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
- M tests/screenshots/kling-mode-selection.png
+ M CLAUDE.md
 ```
 
 ## 最新コミット
 ```
-d9c0165 feat: バリアント生成UIモーダル・ワーカー追加
+83f3134 docs: セッション14記録・/recoスキル・Skill/Subagent追加
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション15）
+- **/reco 実行による並列分析**
+  - 5 subagent並列実行（code-analyzer, build-checker, state-analyzer, test-runner, tools-analyzer）
+  - ビルド成功・テスト14/14 Pass・未コミット変更なしを確認
+  - tools-analyzerから改善提案を取得
+- **/test-and-fix スキル拡張（14行→122行）**
+  - テスト環境自動検出（Playwright, Jest, Vitest対応）
+  - エラータイプ別の分析・対応パターン追加
+  - 修正難易度判定（easy/medium/hard）
+  - プロジェクト固有の注意事項（BuzzWriteYear用）
+  - 再テスト・報告フォーマット
+- **/deploy-verify スキル新規作成（113行）**
+  - 事前チェック（Git状態、ビルド、環境変数）
+  - Vercel本番デプロイ実行・確認手順
+  - Renderワーカー検証手順
+  - E2Eテスト統合実行（本番URL）
+  - ロールバック手順
+- **CLAUDE.md更新**
+  - 新規スキル2件をスキル一覧に追加
 
 ### 2026-01-11（セッション14）
 - **/reco スキル作成（並列分析・自動タスク実行）**
