@@ -8,7 +8,7 @@ type CookieToSet = {
   options?: CookieOptions
 }
 
-const PUBLIC_PATHS = ['/login', '/signup', '/callback']
+const AUTH_PATHS = ['/login', '/signup', '/callback']
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -41,18 +41,10 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isPublicPath = PUBLIC_PATHS.some(path => pathname.startsWith(path))
-  const isApiPath = pathname.startsWith('/api')
-
-  // Redirect unauthenticated users to login (except for public paths and API routes)
-  if (!user && !isPublicPath && !isApiPath) {
-    const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
-  }
+  const isAuthPath = AUTH_PATHS.some(path => pathname.startsWith(path))
 
   // Redirect authenticated users away from auth pages
-  if (user && isPublicPath) {
+  if (user && isAuthPath) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

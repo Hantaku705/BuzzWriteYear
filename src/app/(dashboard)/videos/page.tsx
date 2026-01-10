@@ -31,7 +31,9 @@ import {
   Trash2,
   ExternalLink,
 } from 'lucide-react'
+import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
+import { useAuth } from '@/hooks/useAuth'
 import type { VideoWithProduct } from '@/lib/api/videos'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -54,6 +56,7 @@ const contentTypeLabels: Record<string, string> = {
 
 export default function VideosPage() {
   const router = useRouter()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('all')
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null)
@@ -97,6 +100,22 @@ export default function VideosPage() {
         <Icon className="mr-1 h-3 w-3" />
         {config.label}
       </Badge>
+    )
+  }
+
+  // Show login prompt if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">動画管理</h1>
+          <p className="text-zinc-400">生成した動画を管理・投稿</p>
+        </div>
+        <LoginPrompt
+          title="ログインして動画を管理"
+          description="Googleアカウントでログインすると、生成した動画の履歴を保存・管理できます。TikTokへの投稿も可能です。"
+        />
+      </div>
     )
   }
 

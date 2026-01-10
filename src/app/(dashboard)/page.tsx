@@ -14,8 +14,10 @@ import {
   Loader2,
   Clock,
   CheckCircle,
+  LogIn,
 } from 'lucide-react'
 import { useDashboardStats, useRecentVideos, useTopProducts } from '@/hooks/useStats'
+import { useAuth } from '@/hooks/useAuth'
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   draft: { label: '下書き', color: 'bg-zinc-500' },
@@ -28,6 +30,7 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const { data: stats, isLoading: statsLoading } = useDashboardStats()
   const { data: recentVideos = [], isLoading: videosLoading } = useRecentVideos(5)
   const { data: topProducts = [], isLoading: productsLoading } = useTopProducts(5)
@@ -134,17 +137,36 @@ export default function DashboardPage() {
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-white">最近の動画</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-zinc-400"
-              onClick={() => router.push('/videos')}
-            >
-              すべて表示
-            </Button>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-zinc-400"
+                onClick={() => router.push('/videos')}
+              >
+                すべて表示
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            {videosLoading ? (
+            {!authLoading && !isAuthenticated ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 mb-4">
+                  <LogIn className="h-6 w-6 text-pink-500" />
+                </div>
+                <p className="text-zinc-400">ログインして履歴を表示</p>
+                <p className="text-sm text-zinc-500 mt-1">
+                  動画の履歴を保存・管理できます
+                </p>
+                <Button
+                  className="mt-4 bg-pink-500 hover:bg-pink-600"
+                  onClick={() => router.push('/login')}
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  ログイン
+                </Button>
+              </div>
+            ) : videosLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
               </div>
@@ -201,17 +223,37 @@ export default function DashboardPage() {
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-white">トップ商品</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-zinc-400"
-              onClick={() => router.push('/products')}
-            >
-              すべて表示
-            </Button>
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-zinc-400"
+                onClick={() => router.push('/products')}
+              >
+                すべて表示
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            {productsLoading ? (
+            {!authLoading && !isAuthenticated ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-500/10 mb-4">
+                  <LogIn className="h-6 w-6 text-pink-500" />
+                </div>
+                <p className="text-zinc-400">ログインして履歴を表示</p>
+                <p className="text-sm text-zinc-500 mt-1">
+                  商品の履歴を保存・管理できます
+                </p>
+                <Button
+                  className="mt-4"
+                  variant="outline"
+                  onClick={() => router.push('/login')}
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  ログイン
+                </Button>
+              </div>
+            ) : productsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
               </div>

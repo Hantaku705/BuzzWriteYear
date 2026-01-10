@@ -38,10 +38,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ProductForm } from '@/components/product/ProductForm'
+import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { useProducts, useDeleteProduct } from '@/hooks/useProducts'
+import { useAuth } from '@/hooks/useAuth'
 import type { Product } from '@/types/database'
 
 export default function ProductsPage() {
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -76,6 +79,22 @@ export default function ProductsPage() {
       style: 'currency',
       currency: 'JPY',
     }).format(price)
+  }
+
+  // Show login prompt if not authenticated
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-white">商品管理</h1>
+          <p className="text-zinc-400">商品を登録してバズ動画を作成</p>
+        </div>
+        <LoginPrompt
+          title="ログインして商品を管理"
+          description="Googleアカウントでログインすると、商品を登録・管理できます。登録した商品から動画を自動生成できます。"
+        />
+      </div>
+    )
   }
 
   return (
