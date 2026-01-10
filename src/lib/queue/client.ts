@@ -37,6 +37,7 @@ export const QUEUE_NAMES = {
   VIDEO_GENERATION: 'video-generation',
   UGC_PROCESSING: 'ugc-processing',
   HEYGEN_GENERATION: 'heygen-generation',
+  KLING_GENERATION: 'kling-generation',
   TIKTOK_POSTING: 'tiktok-posting',
   ANALYTICS_COLLECTION: 'analytics-collection',
 } as const
@@ -84,6 +85,18 @@ export interface HeyGenJobData {
   backgroundUrl?: string
 }
 
+export interface KlingJobData {
+  videoId: string
+  userId: string
+  productId: string
+  mode: 'image-to-video' | 'text-to-video'
+  imageUrl?: string
+  prompt: string
+  negativePrompt?: string
+  duration: 5 | 10
+  presetId?: string
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
@@ -91,6 +104,8 @@ let videoGenerationQueue: Queue | null = null
 let ugcProcessingQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let heygenQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let klingQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let tiktokPostingQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -124,6 +139,16 @@ export const getHeyGenQueue = () => {
     )
   }
   return heygenQueue
+}
+
+export const getKlingQueue = () => {
+  if (!klingQueue) {
+    klingQueue = new Queue(
+      QUEUE_NAMES.KLING_GENERATION,
+      { connection: getRedisConnection() }
+    )
+  }
+  return klingQueue
 }
 
 export const getTikTokPostingQueue = () => {
@@ -218,6 +243,22 @@ export const addHeyGenJob = async (
     backoff: {
       type: 'exponential',
       delay: 10000,
+    },
+  })
+}
+
+export const addKlingJob = async (
+  data: KlingJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getKlingQueue()
+  return queue.add('generate', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 15000, // Kling APIは時間がかかるため長めに設定
     },
   })
 }

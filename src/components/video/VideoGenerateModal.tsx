@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
-import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film } from 'lucide-react'
 import { RemotionPreview } from './RemotionPreview'
 import { useProducts } from '@/hooks/useProducts'
 import {
@@ -30,13 +30,16 @@ import {
   ReviewTextProps,
   FeatureListProps,
 } from '@/hooks/useGenerateVideo'
+import { useKlingGenerate } from '@/hooks/useKlingGenerate'
+import { KLING_PRESETS, type PromptPreset } from '@/lib/video/kling/prompts'
 
 interface VideoGenerateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-type Step = 'template' | 'product' | 'params' | 'preview'
+type GenerationMode = 'remotion' | 'kling'
+type Step = 'mode' | 'template' | 'product' | 'params' | 'preview'
 
 interface TemplateOption {
   id: CompositionId
@@ -45,7 +48,7 @@ interface TemplateOption {
   duration: string
 }
 
-const templates: TemplateOption[] = [
+const remotionTemplates: TemplateOption[] = [
   {
     id: 'ProductIntro',
     name: '商品紹介',
@@ -73,40 +76,45 @@ const templates: TemplateOption[] = [
 ]
 
 export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalProps) {
-  const [step, setStep] = useState<Step>('template')
-  const [selectedTemplate, setSelectedTemplate] = useState<CompositionId | null>(null)
+  // モード選択
+  const [generationMode, setGenerationMode] = useState<GenerationMode | null>(null)
+
+  // 共通State
+  const [step, setStep] = useState<Step>('mode')
   const [selectedProductId, setSelectedProductId] = useState<string>('')
   const [title, setTitle] = useState('')
 
-  // ProductIntro params
+  // Remotion用State
+  const [selectedTemplate, setSelectedTemplate] = useState<CompositionId | null>(null)
   const [catchCopy, setCatchCopy] = useState('')
   const [features, setFeatures] = useState(['', '', ''])
   const [ctaText, setCtaText] = useState('今すぐチェック')
-
-  // BeforeAfter params
   const [beforeImage, setBeforeImage] = useState('')
   const [afterImage, setAfterImage] = useState('')
-
-  // ReviewText params
   const [reviewText, setReviewText] = useState('')
   const [rating, setRating] = useState(5)
   const [reviewerName, setReviewerName] = useState('購入者')
-
-  // FeatureList params
   const [featureItems, setFeatureItems] = useState([
     { icon: '✨', title: '', description: '' },
     { icon: '🎯', title: '', description: '' },
     { icon: '💪', title: '', description: '' },
   ])
 
+  // Kling用State
+  const [selectedPreset, setSelectedPreset] = useState<PromptPreset>(KLING_PRESETS[0])
+  const [customPrompt, setCustomPrompt] = useState('')
+  const [klingDuration, setKlingDuration] = useState<5 | 10>(5)
+
   const { data: products = [] } = useProducts()
   const generateVideo = useGenerateVideo()
+  const generateKling = useKlingGenerate()
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId),
     [products, selectedProductId]
   )
 
+  // Remotion用InputProps
   const inputProps = useMemo(() => {
     if (!selectedTemplate || !selectedProduct) return null
 
@@ -174,19 +182,44 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
     featureItems,
   ])
 
+  // Kling用プロンプト
+  const klingPrompt = useMemo(() => {
+    if (selectedPreset.id === 'custom') {
+      return customPrompt
+    }
+    return `${selectedPreset.prompt}, featuring "${selectedProduct?.name || 'product'}"`
+  }, [selectedPreset, customPrompt, selectedProduct])
+
   const handleNext = () => {
-    if (step === 'template' && selectedTemplate) {
+    if (step === 'mode' && generationMode) {
+      if (generationMode === 'remotion') {
+        setStep('template')
+      } else {
+        setStep('product')
+      }
+    } else if (step === 'template' && selectedTemplate) {
       setStep('product')
     } else if (step === 'product' && selectedProductId) {
       setStep('params')
     } else if (step === 'params') {
-      setStep('preview')
+      if (generationMode === 'kling') {
+        // Klingは直接生成（プレビューなし）
+        handleKlingSave()
+      } else {
+        setStep('preview')
+      }
     }
   }
 
   const handleBack = () => {
-    if (step === 'product') {
-      setStep('template')
+    if (step === 'template') {
+      setStep('mode')
+    } else if (step === 'product') {
+      if (generationMode === 'remotion') {
+        setStep('template')
+      } else {
+        setStep('mode')
+      }
     } else if (step === 'params') {
       setStep('product')
     } else if (step === 'preview') {
@@ -194,10 +227,10 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
     }
   }
 
-  const handleSave = async () => {
+  const handleRemotionSave = async () => {
     if (!selectedTemplate || !selectedProductId || !inputProps) return
 
-    const videoTitle = title || `${selectedProduct?.name} - ${templates.find((t) => t.id === selectedTemplate)?.name}`
+    const videoTitle = title || `${selectedProduct?.name} - ${remotionTemplates.find((t) => t.id === selectedTemplate)?.name}`
 
     await generateVideo.mutateAsync({
       productId: selectedProductId,
@@ -206,13 +239,33 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
       inputProps,
     })
 
-    // Reset and close
+    resetForm()
+    onOpenChange(false)
+  }
+
+  const handleKlingSave = async () => {
+    if (!selectedProductId || !klingPrompt) return
+
+    const videoTitle = title || `${selectedProduct?.name} - AI生成（${selectedPreset.labelJa}）`
+
+    await generateKling.mutateAsync({
+      productId: selectedProductId,
+      mode: 'image-to-video',
+      imageUrl: selectedProduct?.images[0],
+      prompt: klingPrompt,
+      negativePrompt: selectedPreset.negativePrompt,
+      duration: klingDuration,
+      presetId: selectedPreset.id,
+      title: videoTitle,
+    })
+
     resetForm()
     onOpenChange(false)
   }
 
   const resetForm = () => {
-    setStep('template')
+    setGenerationMode(null)
+    setStep('mode')
     setSelectedTemplate(null)
     setSelectedProductId('')
     setTitle('')
@@ -229,14 +282,35 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
       { icon: '🎯', title: '', description: '' },
       { icon: '💪', title: '', description: '' },
     ])
+    setSelectedPreset(KLING_PRESETS[0])
+    setCustomPrompt('')
+    setKlingDuration(5)
   }
 
   const canProceed = () => {
+    if (step === 'mode') return !!generationMode
     if (step === 'template') return !!selectedTemplate
     if (step === 'product') return !!selectedProductId
-    if (step === 'params') return true
+    if (step === 'params') {
+      if (generationMode === 'kling') {
+        return !!klingPrompt
+      }
+      return true
+    }
     return false
   }
+
+  const getSteps = (): Step[] => {
+    if (generationMode === 'remotion') {
+      return ['mode', 'template', 'product', 'params', 'preview']
+    } else if (generationMode === 'kling') {
+      return ['mode', 'product', 'params']
+    }
+    return ['mode']
+  }
+
+  const steps = getSteps()
+  const currentStepIndex = steps.indexOf(step)
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o) }}>
@@ -250,23 +324,23 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
 
         {/* Step indicator */}
         <div className="flex items-center justify-center gap-2 py-4">
-          {(['template', 'product', 'params', 'preview'] as Step[]).map((s, i) => (
+          {steps.map((s, i) => (
             <div key={s} className="flex items-center">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   step === s
                     ? 'bg-pink-500 text-white'
-                    : ['template', 'product', 'params', 'preview'].indexOf(step) > i
+                    : currentStepIndex > i
                     ? 'bg-pink-500/30 text-pink-300'
                     : 'bg-zinc-800 text-zinc-500'
                 }`}
               >
                 {i + 1}
               </div>
-              {i < 3 && (
+              {i < steps.length - 1 && (
                 <div
                   className={`w-8 h-0.5 ${
-                    ['template', 'product', 'params', 'preview'].indexOf(step) > i
+                    currentStepIndex > i
                       ? 'bg-pink-500/30'
                       : 'bg-zinc-800'
                   }`}
@@ -276,12 +350,68 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
           ))}
         </div>
 
-        {/* Step 1: Template Selection */}
-        {step === 'template' && (
+        {/* Step 0: Mode Selection */}
+        {step === 'mode' && (
+          <div className="space-y-4">
+            <p className="text-zinc-400 text-sm">生成方法を選択してください</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Card
+                className={`cursor-pointer transition-all ${
+                  generationMode === 'kling'
+                    ? 'bg-pink-500/20 border-pink-500'
+                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
+                }`}
+                onClick={() => setGenerationMode('kling')}
+              >
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500">
+                      <Wand2 className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-lg">AI生成（Kling）</p>
+                      <p className="text-sm text-zinc-400 mt-1">
+                        商品画像からWebCM風の高品質動画を自動生成
+                      </p>
+                      <p className="text-xs text-pink-400 mt-2">おすすめ</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
+                className={`cursor-pointer transition-all ${
+                  generationMode === 'remotion'
+                    ? 'bg-pink-500/20 border-pink-500'
+                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
+                }`}
+                onClick={() => setGenerationMode('remotion')}
+              >
+                <CardContent className="p-6">
+                  <div className="flex flex-col items-center text-center gap-3">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-700">
+                      <Film className="h-7 w-7 text-zinc-300" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white text-lg">テンプレート</p>
+                      <p className="text-sm text-zinc-400 mt-1">
+                        Remotionテンプレートでモーショングラフィックス動画を作成
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-2">即時生成</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1: Template Selection (Remotion only) */}
+        {step === 'template' && generationMode === 'remotion' && (
           <div className="space-y-4">
             <p className="text-zinc-400 text-sm">テンプレートを選択してください</p>
             <div className="grid grid-cols-2 gap-4">
-              {templates.map((template) => (
+              {remotionTemplates.map((template) => (
                 <Card
                   key={template.id}
                   className={`cursor-pointer transition-all ${
@@ -321,26 +451,49 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
                 </p>
               </div>
             ) : (
-              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
-                  <SelectValue placeholder="商品を選択" />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
-                  {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-4">
+                <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectValue placeholder="商品を選択" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* 選択された商品のプレビュー */}
+                {selectedProduct && (
+                  <div className="flex items-center gap-4 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    {selectedProduct.images[0] && (
+                      <img
+                        src={selectedProduct.images[0]}
+                        alt={selectedProduct.name}
+                        className="w-20 h-20 object-cover rounded-lg"
+                      />
+                    )}
+                    <div>
+                      <p className="font-medium text-white">{selectedProduct.name}</p>
+                      <p className="text-sm text-zinc-400">¥{selectedProduct.price.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
 
         {/* Step 3: Parameters */}
-        {step === 'params' && selectedTemplate && (
+        {step === 'params' && (
           <div className="space-y-4">
-            <p className="text-zinc-400 text-sm">動画のパラメータを設定してください</p>
+            <p className="text-zinc-400 text-sm">
+              {generationMode === 'kling'
+                ? 'AI動画生成の設定をしてください'
+                : '動画のパラメータを設定してください'}
+            </p>
 
             <div className="space-y-4">
               <div>
@@ -349,12 +502,89 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={`${selectedProduct?.name} - ${templates.find((t) => t.id === selectedTemplate)?.name}`}
+                  placeholder={
+                    generationMode === 'kling'
+                      ? `${selectedProduct?.name} - AI生成`
+                      : `${selectedProduct?.name} - ${remotionTemplates.find((t) => t.id === selectedTemplate)?.name}`
+                  }
                   className="bg-zinc-800 border-zinc-700 mt-1"
                 />
               </div>
 
-              {selectedTemplate === 'ProductIntro' && (
+              {/* Kling用パラメータ */}
+              {generationMode === 'kling' && (
+                <>
+                  <div>
+                    <Label>スタイルプリセット</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {KLING_PRESETS.filter(p => p.id !== 'custom').map((preset) => (
+                        <Card
+                          key={preset.id}
+                          className={`cursor-pointer transition-all ${
+                            selectedPreset.id === preset.id
+                              ? 'bg-pink-500/20 border-pink-500'
+                              : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
+                          }`}
+                          onClick={() => setSelectedPreset(preset)}
+                        >
+                          <CardContent className="p-3">
+                            <p className="font-medium text-white text-sm">{preset.labelJa}</p>
+                            <p className="text-xs text-zinc-400 mt-1">{preset.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label>カスタムプロンプト（任意）</Label>
+                    <Textarea
+                      value={customPrompt}
+                      onChange={(e) => {
+                        setCustomPrompt(e.target.value)
+                        if (e.target.value) {
+                          setSelectedPreset(KLING_PRESETS.find(p => p.id === 'custom')!)
+                        }
+                      }}
+                      placeholder="独自のプロンプトを入力（英語推奨）"
+                      className="bg-zinc-800 border-zinc-700 mt-1"
+                      rows={3}
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">
+                      プリセットの代わりにカスタムプロンプトを使用する場合に入力
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label>動画の長さ</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant={klingDuration === 5 ? 'default' : 'outline'}
+                        className={klingDuration === 5 ? 'bg-pink-500' : 'border-zinc-700'}
+                        onClick={() => setKlingDuration(5)}
+                      >
+                        5秒（$0.16）
+                      </Button>
+                      <Button
+                        variant={klingDuration === 10 ? 'default' : 'outline'}
+                        className={klingDuration === 10 ? 'bg-pink-500' : 'border-zinc-700'}
+                        onClick={() => setKlingDuration(10)}
+                      >
+                        10秒（$0.32）
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                    <p className="text-sm text-yellow-200">
+                      AI動画生成には1〜3分かかります。生成完了後、動画一覧に表示されます。
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Remotion用パラメータ */}
+              {generationMode === 'remotion' && selectedTemplate === 'ProductIntro' && (
                 <>
                   <div>
                     <Label htmlFor="catchCopy">キャッチコピー</Label>
@@ -395,7 +625,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
                 </>
               )}
 
-              {selectedTemplate === 'BeforeAfter' && (
+              {generationMode === 'remotion' && selectedTemplate === 'BeforeAfter' && (
                 <>
                   <div>
                     <Label htmlFor="beforeImage">Before画像URL（任意）</Label>
@@ -420,7 +650,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
                 </>
               )}
 
-              {selectedTemplate === 'ReviewText' && (
+              {generationMode === 'remotion' && selectedTemplate === 'ReviewText' && (
                 <>
                   <div>
                     <Label htmlFor="reviewText">レビューテキスト</Label>
@@ -461,7 +691,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
                 </>
               )}
 
-              {selectedTemplate === 'FeatureList' && (
+              {generationMode === 'remotion' && selectedTemplate === 'FeatureList' && (
                 <div>
                   <Label>特徴リスト</Label>
                   {featureItems.map((item, i) => (
@@ -504,8 +734,8 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
           </div>
         )}
 
-        {/* Step 4: Preview */}
-        {step === 'preview' && selectedTemplate && inputProps && (
+        {/* Step 4: Preview (Remotion only) */}
+        {step === 'preview' && generationMode === 'remotion' && selectedTemplate && inputProps && (
           <div className="space-y-4">
             <p className="text-zinc-400 text-sm">プレビューを確認して保存してください</p>
             <div className="flex justify-center">
@@ -527,25 +757,16 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
           <Button
             variant="outline"
             onClick={handleBack}
-            disabled={step === 'template'}
+            disabled={step === 'mode'}
             className="border-zinc-700"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             戻る
           </Button>
 
-          {step !== 'preview' ? (
+          {step === 'preview' ? (
             <Button
-              onClick={handleNext}
-              disabled={!canProceed()}
-              className="bg-pink-500 hover:bg-pink-600"
-            >
-              次へ
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              onClick={handleSave}
+              onClick={handleRemotionSave}
               disabled={generateVideo.isPending}
               className="bg-pink-500 hover:bg-pink-600"
             >
@@ -557,6 +778,33 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
               ) : (
                 '保存'
               )}
+            </Button>
+          ) : step === 'params' && generationMode === 'kling' ? (
+            <Button
+              onClick={handleKlingSave}
+              disabled={generateKling.isPending || !canProceed()}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            >
+              {generateKling.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成開始中...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  AI動画を生成
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="bg-pink-500 hover:bg-pink-600"
+            >
+              次へ
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
         </div>
