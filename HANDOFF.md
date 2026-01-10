@@ -71,9 +71,9 @@
 npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 ```
 
-### 本番ワーカー（Railway等で常時起動推奨）
-- 現在はローカルでワーカーを起動する必要あり
-- Railwayなどで`scripts/start-worker.ts`を常時起動すると本番で動画生成可能
+### 本番ワーカー（Renderでデプロイ済み）
+- **Render**: kling-worker サービスで常時起動中
+- 本番サイト（buzzwriteyear.vercel.app）からKling AI動画生成が動作
 
 ### オプション設定（機能拡張）
 - **Redis (Upstash)**: ✅ 設定済み
@@ -93,12 +93,13 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M HANDOFF.md
+ M src/app/(dashboard)/videos/[id]/page.tsx
+?? src/components/video/VariantGenerateModal.tsx
 ```
 
 ## 最新コミット
 ```
-f0e8520 feat: A/Bテスト用バリアント一括生成機能
+19f5afd docs: セッション12記録・Render本番ワーカーデプロイ完了
 ```
 
 ## セッション履歴

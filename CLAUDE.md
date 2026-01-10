@@ -86,16 +86,16 @@ npm run worker:prod
 npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 ```
 
-### ワーカー起動（Railway）
+### ワーカー起動（Render - 本番）
 
-1. `railway login` でログイン
-2. `railway init` でプロジェクト作成
-3. `railway add -s kling-worker` でサービス作成
-4. `railway variables --set "REDIS_URL=..." --set "KLING_API_KEY=..."` で環境変数設定
-5. Railwayダッシュボードで Start Command を `npm run worker:prod` に設定
-6. `railway up` でデプロイ
+**デプロイ済み**: kling-worker サービスがRenderで常時起動中
 
-**注意**: `railway.toml`のstartCommandが認識されない場合は、ダッシュボードから手動設定が必要。
+新規デプロイ/再設定時:
+1. https://dashboard.render.com でGitHubログイン
+2. **New** → **Blueprint** → リポジトリ選択
+3. `render.yaml` が自動検出される
+4. 環境変数設定（REDIS_URL, SUPABASE, KLING_API_KEY）
+5. **Manual Deploy** で起動
 
 ---
 
