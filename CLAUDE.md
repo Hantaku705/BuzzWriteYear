@@ -82,11 +82,12 @@ REDIS_URL=
 | `src/app/api/tiktok/` | TikTok OAuth APIエンドポイント |
 | `src/components/layout/` | Sidebar, Header |
 | `src/components/product/` | 商品関連コンポーネント |
-| `src/components/video/` | 動画プレビュー（RemotionPreview） |
+| `src/components/video/` | 動画プレビュー（RemotionPreview, VideoGenerateModal） |
 | `src/components/analytics/` | 分析ダッシュボードコンポーネント |
 | `src/components/auth/` | 認証フォームコンポーネント |
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
-| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload） |
+| `src/app/(dashboard)/videos/[id]/` | 動画詳細ページ |
+| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useGenerateVideo） |
 | `src/lib/api/` | API関数（products, videos, stats, analytics） |
 | `src/lib/query/` | TanStack Query設定 |
 | `src/lib/storage/` | Supabase Storage画像アップロード |

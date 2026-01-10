@@ -34,6 +34,12 @@
 - [x] **Phase 6: ダッシュボード統計（リアルデータ）**
 - [x] **Phase 6: 分析ページ連携（リアルデータ）**
 - [x] **Phase 6: 設定ページ（プロフィール表示・ログアウト）**
+- [x] **Google OAuth実装（Supabase Auth経由）**
+- [x] **匿名利用可能化（ログイン不要でも使用可能、履歴はログイン必要）**
+- [x] **動画生成UIモーダル（VideoGenerateModal）**
+- [x] **useGenerateVideoフック（Supabase保存）**
+- [x] **動画詳細ページ（/videos/[id]）**
+- [x] **Vercelデプロイ（buzzwriteyear.vercel.app）**
 
 ### 作業中のタスク
 - なし（全6フェーズ完了、環境セットアップ完了、E2Eテスト完了）
@@ -54,7 +60,8 @@
 - **HeyGen API**: `HEYGEN_API_KEY` でAIアバター機能が有効に
 
 ### アクセスURL
-- http://localhost:3000/ - ホーム
+- **本番**: https://buzzwriteyear.vercel.app
+- **ローカル**: http://localhost:3000/
 - http://localhost:3000/analytics - 分析ダッシュボード
 - http://localhost:3000/products - 商品管理
 - http://localhost:3000/videos - 動画管理
@@ -69,10 +76,32 @@
 
 ## 最新コミット
 ```
-992b2cf feat: Phase 6 - データ連携完全実装
+3d5c36b feat: 動画生成機能を実装
 ```
 
 ## セッション履歴
+
+### 2026-01-10（セッション5）
+- **Vercelデプロイ完了**: https://buzzwriteyear.vercel.app
+- **Google OAuth実装**
+  - Supabase Auth経由でGoogleログイン追加
+  - AuthFormにGoogleボタン追加（白背景、ブランドカラー）
+  - ミドルウェア更新（未認証でもアクセス可能に）
+  - LoginPromptコンポーネント作成（ログイン促進UI）
+  - ダッシュボード・商品・動画ページに履歴表示用ログインプロンプト追加
+- **動画生成機能UI実装（クライアントサイドプレビュー方式）**
+  - VideoGenerateModal: 4ステップウィザード形式
+    - テンプレート選択（ProductIntro, BeforeAfter, ReviewText, FeatureList）
+    - 商品選択
+    - パラメータ入力
+    - Remotion Playerでリアルタイムプレビュー
+  - useGenerateVideoフック: Supabaseに動画データ保存
+  - 動画詳細ページ: /videos/[id] でプレビュー・詳細表示
+  - VideoCardに詳細ページへのナビゲーション追加
+- **型定義更新**
+  - database.tsにinput_propsフィールド追加
+  - VideoWithProductにprice追加
+- **環境変数整理**: .env.localをプロジェクト固有/共通に分類
 
 ### 2026-01-10（セッション4）
 - **Phase 6: データ連携完全実装**
