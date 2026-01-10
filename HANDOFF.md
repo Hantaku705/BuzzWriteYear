@@ -64,31 +64,12 @@
 
 ## 未コミット変更
 ```
- M HANDOFF.md
- M package-lock.json
- M package.json
- M src/app/(dashboard)/analytics/page.tsx
- M src/app/(dashboard)/page.tsx
- M src/app/(dashboard)/products/page.tsx
- M src/app/(dashboard)/settings/page.tsx
- M src/app/(dashboard)/videos/page.tsx
- M src/app/layout.tsx
- M src/components/layout/Header.tsx
- M src/components/product/ProductForm.tsx
- M src/lib/supabase/middleware.ts
-?? src/app/(auth)/
-?? src/app/api/auth/
-?? src/components/auth/
-?? src/components/ui/alert-dialog.tsx
-?? src/hooks/
-?? src/lib/api/
-?? src/lib/query/
-?? src/lib/storage/
+なし
 ```
 
 ## 最新コミット
 ```
-b9c6408 fix: ルートページをダッシュボードに修正
+992b2cf feat: Phase 6 - データ連携完全実装
 ```
 
 ## セッション履歴
