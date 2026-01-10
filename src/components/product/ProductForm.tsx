@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, X, Plus, Loader2 } from 'lucide-react'
+import { Upload, X, Plus, Loader2, Link, Sparkles } from 'lucide-react'
 import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts'
 import { useUpload } from '@/hooks/useUpload'
+import { useScrape } from '@/hooks/useScrape'
 
 interface ProductFormProps {
   onSuccess?: () => void
@@ -28,11 +29,41 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
   const [features, setFeatures] = useState<string[]>(initialData?.features || [''])
   const [images, setImages] = useState<string[]>(initialData?.images || [])
   const [error, setError] = useState<string | null>(null)
+  // LLM分析フィールド
+  const [category, setCategory] = useState('')
+  const [brand, setBrand] = useState('')
+  const [targetAudience, setTargetAudience] = useState('')
+
+  const [productUrl, setProductUrl] = useState('')
 
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
   const { upload, uploading } = useUpload()
+  const { scrape, isLoading: isScraping, error: scrapeError } = useScrape()
   const isLoading = createProduct.isPending || updateProduct.isPending
+
+  const handleScrape = async () => {
+    if (!productUrl.trim()) return
+
+    const result = await scrape(productUrl)
+    if (result) {
+      setName(result.name || '')
+      setDescription(result.description || '')
+      if (result.price) {
+        setPrice(result.price.toString())
+      }
+      if (result.features && result.features.length > 0) {
+        setFeatures(result.features)
+      }
+      if (result.images && result.images.length > 0) {
+        setImages(result.images)
+      }
+      // LLM分析フィールド
+      if (result.category) setCategory(result.category)
+      if (result.brand) setBrand(result.brand)
+      if (result.targetAudience) setTargetAudience(result.targetAudience)
+    }
+  }
 
   const addFeature = () => {
     setFeatures([...features, ''])
@@ -75,6 +106,47 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* URL Auto-fill */}
+      <div className="space-y-2 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
+        <Label className="text-white flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-pink-500" />
+          URLから自動入力
+        </Label>
+        <p className="text-xs text-zinc-400 mb-2">
+          Amazon・楽天・一般サイトの商品URLを入力すると、商品情報を自動で取得します
+        </p>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+            <Input
+              value={productUrl}
+              onChange={(e) => setProductUrl(e.target.value)}
+              placeholder="https://www.amazon.co.jp/dp/..."
+              className="bg-zinc-900 border-zinc-700 pl-10"
+              disabled={isScraping}
+            />
+          </div>
+          <Button
+            type="button"
+            onClick={handleScrape}
+            disabled={isScraping || !productUrl.trim()}
+            className="bg-pink-500 hover:bg-pink-600 whitespace-nowrap"
+          >
+            {isScraping ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                取得中...
+              </>
+            ) : (
+              '自動入力'
+            )}
+          </Button>
+        </div>
+        {scrapeError && (
+          <p className="text-xs text-red-400 mt-1">{scrapeError}</p>
+        )}
+      </div>
+
       {/* Product Name */}
       <div className="space-y-2">
         <Label htmlFor="name" className="text-white">
@@ -121,6 +193,46 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
             placeholder="0"
             className="bg-zinc-800 border-zinc-700 pl-8"
             required
+          />
+        </div>
+      </div>
+
+      {/* LLM分析フィールド */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="category" className="text-white">
+            カテゴリ
+          </Label>
+          <Input
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="例: スキンケア"
+            className="bg-zinc-800 border-zinc-700"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="brand" className="text-white">
+            ブランド名
+          </Label>
+          <Input
+            id="brand"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+            placeholder="例: ADVANCED CLINICALS"
+            className="bg-zinc-800 border-zinc-700"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="targetAudience" className="text-white">
+            ターゲット層
+          </Label>
+          <Input
+            id="targetAudience"
+            value={targetAudience}
+            onChange={(e) => setTargetAudience(e.target.value)}
+            placeholder="例: 30代女性"
+            className="bg-zinc-800 border-zinc-700"
           />
         </div>
       </div>
