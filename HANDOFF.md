@@ -64,6 +64,13 @@
 
 ## 次のアクション
 
+### FFmpeg・ImageMagick拡張（検討中）
+ユーザーの選択待ち。以下のいずれかを実装予定:
+1. **画像最適化** - 商品画像の自動処理（背景除去、リサイズ、WebP変換）
+2. **動画編集強化** - トリミング・結合・字幕機能
+3. **統合パイプライン** - Remotion出力の後処理自動化
+4. **バリアント生成** - A/Bテスト用の複数パターン一括生成
+
 ### ワーカー起動方法（ローカル）
 ```bash
 npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
@@ -91,19 +98,29 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
+ M README.md
  M package-lock.json
  M package.json
- M src/lib/queue/client.ts
- M src/lib/video/kling/client.ts
-?? scripts/
+?? railway-worker.toml
 ```
 
 ## 最新コミット
 ```
-f5e443b feat: 動画生成進捗表示・キャンセル機能を実装
+64998a9 feat: Upstash Redis設定・Kling API修正・ワーカースクリプト追加
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション11）
+- **FFmpeg・ImageMagick拡張方向性の調査・提案**
+  - 既存FFmpeg実装（UGCエフェクト5種）の確認
+  - 画像処理基盤の現状分析（最適化・加工なし）
+  - 拡張案の優先度付け提案:
+    1. 画像処理基盤（sharp/ImageMagick）: サムネイル生成、WebP変換、背景除去
+    2. FFmpeg機能拡張: トリミング、結合、字幕焼き込み、コーデック変換
+    3. 統合パイプライン: Remotion→FFmpeg→ImageMagick→圧縮
+    4. A/Bテスト用バリアント自動生成
+  - 実装ロードマップ作成
 
 ### 2026-01-11（セッション10）
 - **Upstash Redis設定・BullMQキュー有効化**
