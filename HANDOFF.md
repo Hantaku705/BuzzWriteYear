@@ -58,6 +58,15 @@
 - [x] **video-pipeline-analyzer Subagent作成**
 - [x] **/test-and-fix スキル拡張（14行→122行、失敗分析・自動修正機能）**
 - [x] **/deploy-verify スキル新規作成（Vercel+Render統合デプロイ検証）**
+- [x] **ミッション再定義: 「ユーザーが18時間使い続けたくなるアプリを作る」**
+- [x] **意思決定原則更新（UX中毒性優先）**
+- [x] **/reco スキル v3 更新（10 subagent・UX中毒性版）**
+- [x] **/reco スキル v2 拡張（9 subagent・全自動修正対応）**
+- [x] **4つの新subagent作成（ux-analyzer, security-checker, performance-profiler, feature-completeness-checker）**
+- [x] **セキュリティ脆弱性修正（CRITICAL/HIGH 3件）**
+  - /api/videos/pipeline: 認証チェック追加・ユーザー所有確認
+  - /api/videos/variants: POST/GET両方に認証チェック追加
+  - /api/images/optimize: セッションからuserId取得に変更
 
 ### 作業中のタスク
 - なし
@@ -102,15 +111,59 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
- M CLAUDE.md
+ M HANDOFF.md
 ```
 
 ## 最新コミット
 ```
-83f3134 docs: セッション14記録・/recoスキル・Skill/Subagent追加
+eaea6c5 fix(security): add auth checks to video/image API endpoints
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション17）
+- **/reco スキル v2 拡張（9 subagent・全自動修正対応）**
+  - 5 subagent → 9 subagent に拡張
+  - 14段階優先順位テーブル追加
+  - 新規subagent 4件作成:
+    - `ux-analyzer`: UI/UX問題検出・自動修正
+    - `security-checker`: セキュリティ脆弱性検出・自動修正
+    - `performance-profiler`: N+1クエリ・パフォーマンス問題検出
+    - `feature-completeness-checker`: TODO・未実装機能検出
+  - 全自動修正フロー追加（Security→Performance→UX→Feature順）
+- **セキュリティ脆弱性修正（CRITICAL/HIGH 3件）**
+  - `/api/videos/pipeline`: SERVICE_ROLE_KEY→認証付きクライアント、ユーザー所有確認追加
+  - `/api/videos/variants`: POST/GET両方に認証チェック追加、ユーザー所有確認
+  - `/api/images/optimize`: formDataからuserId取得→セッションから取得に変更
+  - Supabase SSR型推論問題をas never/as VideoRowで解決
+- **ビルド検証成功**
+- **コミット完了**: `eaea6c5 fix(security): add auth checks to video/image API endpoints`
+
+### 2026-01-11（セッション16）
+- **ミッション再定義**
+  - Before: 「TikTok Shopの売上（GMV）を最大化する」
+  - After: 「**ユーザーが18時間使い続けたくなるアプリを作る**」
+  - 結果としてGMVが最大化される、という位置付け
+- **意思決定原則更新（UX中毒性優先）**
+  1. UX中毒性 - ユーザーがもっと使いたくなるか？
+  2. 操作の快感 - クリック・操作が気持ち良いか？
+  3. フィードバック - 結果が即座に分かるか？
+  4. シンプルさ - 迷わず直感的に使えるか？
+- **/reco スキル v3 更新（UX中毒性版）**
+  - 9 → 10 subagent に拡張
+  - **engagement-analyzer 新規追加（最重要）**
+    - 中毒性スコア判定（HIGH/MEDIUM/LOW）
+    - ローディング体験、マイクロインタラクション、成功体験演出、継続トリガー、ゲーミフィケーション要素を分析
+  - **ux-analyzer 強化**
+    - 操作の快感（ボタンサイズ、ホバー、クリックフィードバック）
+    - 即時フィードバック（楽観的UI、ローディング状態）
+    - シンプルさ（フォーム複雑度、ナビゲーション深さ）
+  - **優先順位再編（15段階・UX中毒性最優先）**
+    - 3位: engagement-analyzer: LOW → 中毒性向上
+    - 4位: ux-analyzer: CRITICAL → 操作の快感改善
+    - 7位: ux-analyzer: HIGH → UX問題修正
+    - 8位: engagement-analyzer: MEDIUM → 中毒性要素追加
+  - 中毒性改善パターン追加（マイクロインタラクション、成功体験演出、継続トリガー）
 
 ### 2026-01-11（セッション15）
 - **/reco 実行による並列分析**

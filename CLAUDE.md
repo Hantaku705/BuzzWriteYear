@@ -270,7 +270,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 | スキル | 説明 |
 |--------|------|
-| `/reco` | 9 subagent並列分析・全自動修正（セキュリティ/パフォーマンス/UX/機能完成度） |
+| `/reco` | **10 subagent並列分析・UX中毒性最優先（engagement-analyzer追加）** |
 | `/verify-worker-deployment` | ワーカーデプロイ検証（ローカル〜本番） |
 | `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
 | `/deploy-verify` | Vercel+Render統合デプロイ検証 |
@@ -286,7 +286,8 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `video-pipeline-analyzer` | 動画パイプライン分析・最適化 |
 | `build-validator` | ビルド・型・リント・テスト検証 |
 | `code-architect` | 設計レビュー・アーキテクチャ分析 |
-| `ux-analyzer` | UI/UX問題検出・自動修正（/reco用） |
+| **`engagement-analyzer`** | **中毒性・エンゲージメント分析（/reco用・最重要）** |
+| `ux-analyzer` | 操作の快感・即時フィードバック分析（/reco用・強化版） |
 | `security-checker` | セキュリティ脆弱性検出・自動修正（/reco用） |
 | `performance-profiler` | N+1クエリ・パフォーマンス最適化（/reco用） |
 | `feature-completeness-checker` | TODO・未実装機能検出・自動修正（/reco用） |
