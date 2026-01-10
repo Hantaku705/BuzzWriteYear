@@ -25,7 +25,7 @@
 | Auth | Supabase Auth |
 | Storage | Supabase Storage |
 | Queue | BullMQ + Redis (Upstash) |
-| Video Gen | Remotion (60%) + HeyGen (20%) + FFmpeg (20%) |
+| Video Gen | Remotion + Kling AI + HeyGen + FFmpeg |
 | Charts | Recharts |
 | Deploy | Vercel + Docker |
 
@@ -62,6 +62,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
 HEYGEN_API_KEY=
+KLING_API_KEY=
 REDIS_URL=
 ```
 
@@ -96,6 +97,7 @@ REDIS_URL=
 | `src/lib/tiktok/` | TikTok APIクライアント |
 | `src/lib/video/ffmpeg/` | FFmpeg UGC加工 |
 | `src/lib/video/heygen/` | HeyGen APIクライアント |
+| `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/remotion/` | Remotionテンプレート |
 | `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
@@ -136,6 +138,7 @@ REDIS_URL=
 | video-generation | Remotion動画生成 |
 | ugc-processing | UGC風加工 |
 | heygen-generation | HeyGen動画生成 |
+| kling-generation | Kling AI動画生成 |
 | tiktok-posting | TikTok投稿 |
 | analytics-collection | 分析データ収集 |
 
@@ -168,11 +171,12 @@ REDIS_URL=
 
 ## 動画生成方式
 
-| 方式 | 用途 | 割合 |
+| 方式 | 用途 | 料金 |
 |------|------|------|
-| Remotion | 商品紹介、比較、レビュー風 | 60% |
-| HeyGen | AIアバター商品紹介 | 20% |
-| FFmpeg | UGC風加工、素材リミックス | 20% |
+| Kling AI | WebCM風高品質動画（Image-to-Video） | $0.16〜/動画 |
+| Remotion | テンプレートベースのモーショングラフィックス | 無料 |
+| HeyGen | AIアバター商品紹介 | 有料 |
+| FFmpeg | UGC風加工、素材リミックス | 無料 |
 
 ---
 
