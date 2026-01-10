@@ -257,11 +257,11 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
+                  size="icon-lg"
                   onClick={() => removeFeature(index)}
-                  className="text-zinc-400 hover:text-red-500"
+                  className="text-zinc-400 hover:text-red-500 min-w-[44px] min-h-[44px]"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-5 w-5" />
                 </Button>
               )}
             </div>
@@ -298,9 +298,9 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
                 variant="ghost"
                 size="icon"
                 onClick={() => setImages(images.filter((_, i) => i !== index))}
-                className="absolute top-1 right-1 h-6 w-6 bg-black/50 hover:bg-black/70 text-white"
+                className="absolute top-1 right-1 min-w-[44px] min-h-[44px] bg-black/50 hover:bg-black/70 text-white"
               >
-                <X className="h-3 w-3" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
           ))}

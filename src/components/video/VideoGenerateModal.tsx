@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle } from 'lucide-react'
+import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle, Layers, ExternalLink, Plus } from 'lucide-react'
 import { RemotionPreview } from './RemotionPreview'
 import { useProducts } from '@/hooks/useProducts'
 import {
@@ -38,6 +38,7 @@ import { KLING_PRESETS, type PromptPreset } from '@/lib/video/kling/prompts'
 interface VideoGenerateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onOpenVariantModal?: (videoId: string, videoTitle: string) => void
 }
 
 type GenerationMode = 'remotion' | 'kling'
@@ -77,7 +78,7 @@ const remotionTemplates: TemplateOption[] = [
   },
 ]
 
-export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalProps) {
+export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: VideoGenerateModalProps) {
   // モード選択
   const [generationMode, setGenerationMode] = useState<GenerationMode | null>(null)
 
@@ -132,12 +133,12 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
     return () => clearInterval(interval)
   }, [step, startTime])
 
-  // 生成完了/失敗時の処理
+  // 生成完了/失敗時の処理（自動クローズを削除し、ユーザーに次のアクションを選ばせる）
+  // 失敗・キャンセル時のみ3秒後に自動で閉じる
   useEffect(() => {
     if (!videoStatus) return
 
-    if (videoStatus.status === 'ready' || videoStatus.status === 'failed' || videoStatus.status === 'cancelled') {
-      // 3秒後にモーダルを閉じる（完了表示を見せるため）
+    if (videoStatus.status === 'failed' || videoStatus.status === 'cancelled') {
       const timeout = setTimeout(() => {
         resetForm()
         onOpenChange(false)
@@ -146,6 +147,32 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
       return () => clearTimeout(timeout)
     }
   }, [videoStatus, onOpenChange])
+
+  // 次のアクション: バリアント生成
+  const handleCreateVariants = () => {
+    if (generatingVideoId) {
+      const videoTitle = title || `${selectedProduct?.name || '商品'} - AI生成`
+      onOpenVariantModal?.(generatingVideoId, videoTitle)
+      resetForm()
+      onOpenChange(false)
+    }
+  }
+
+  // 次のアクション: 動画一覧へ
+  const handleGoToVideos = () => {
+    resetForm()
+    onOpenChange(false)
+    window.location.href = '/videos'
+  }
+
+  // 次のアクション: もう1本生成
+  const handleGenerateAnother = () => {
+    setGeneratingVideoId(null)
+    setStartTime(null)
+    setElapsedTime(0)
+    setStep('mode')
+    setGenerationMode(null)
+  }
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId),
@@ -429,7 +456,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
             <p className="text-zinc-400 text-sm">生成方法を選択してください</p>
             <div className="grid grid-cols-2 gap-4">
               <Card
-                className={`cursor-pointer transition-all ${
+                className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
                   generationMode === 'kling'
                     ? 'bg-pink-500/20 border-pink-500'
                     : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
@@ -453,7 +480,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
               </Card>
 
               <Card
-                className={`cursor-pointer transition-all ${
+                className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
                   generationMode === 'remotion'
                     ? 'bg-pink-500/20 border-pink-500'
                     : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
@@ -888,12 +915,49 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
               </span>
             </div>
 
-            {/* 完了メッセージ */}
+            {/* 完了後の継続トリガー - 次のアクション選択 */}
             {videoStatus?.status === 'ready' && (
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
-                <p className="text-sm text-green-200">
-                  動画一覧で確認できます。3秒後に自動で閉じます...
-                </p>
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                  <p className="text-sm text-green-200">
+                    動画が正常に生成されました！次に何をしますか？
+                  </p>
+                </div>
+
+                {/* 次のアクションボタン */}
+                <div className="grid grid-cols-1 gap-3">
+                  {/* バリアント生成（推奨） */}
+                  <Button
+                    onClick={handleCreateVariants}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-14 text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <Layers className="mr-2 h-5 w-5" />
+                    A/Bテスト用バリアントを生成
+                    <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">おすすめ</span>
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* もう1本生成 */}
+                    <Button
+                      onClick={handleGenerateAnother}
+                      variant="outline"
+                      className="h-12 border-zinc-600 hover:bg-zinc-800 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      もう1本生成
+                    </Button>
+
+                    {/* 動画一覧へ */}
+                    <Button
+                      onClick={handleGoToVideos}
+                      variant="outline"
+                      className="h-12 border-zinc-600 hover:bg-zinc-800 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      動画一覧を見る
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 

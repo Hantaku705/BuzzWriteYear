@@ -137,7 +137,7 @@ export function VariantGenerateModal({
                   <button
                     key={preset.id}
                     onClick={() => setSelectedPreset(preset.id)}
-                    className={`p-4 rounded-lg border text-left transition-colors ${
+                    className={`p-4 rounded-lg border text-left transition-all hover:scale-[1.01] active:scale-[0.99] ${
                       isSelected
                         ? 'border-pink-500 bg-pink-500/10'
                         : 'border-zinc-700 bg-zinc-800/50 hover:border-zinc-600'
