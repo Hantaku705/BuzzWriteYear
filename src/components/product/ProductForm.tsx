@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Upload, X, Plus, Loader2, Link, Sparkles } from 'lucide-react'
 import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts'
-import { useUpload } from '@/hooks/useUpload'
+import { useOptimizedUpload } from '@/hooks/useOptimizedUpload'
 import { useScrape } from '@/hooks/useScrape'
 
 interface ProductFormProps {
@@ -38,7 +38,11 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
 
   const createProduct = useCreateProduct()
   const updateProduct = useUpdateProduct()
-  const { upload, uploading } = useUpload()
+  const { upload, isUploading: uploading, progress: uploadProgress } = useOptimizedUpload({
+    generateThumbnails: true,
+    format: 'webp',
+    quality: 85,
+  })
   const { scrape, isLoading: isScraping, error: scrapeError } = useScrape()
   const isLoading = createProduct.isPending || updateProduct.isPending
 
@@ -302,7 +306,10 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
           ))}
           <label className={`aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
             {uploading ? (
-              <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
+              <div className="flex flex-col items-center">
+                <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
+                <span className="text-xs text-pink-500 mt-1">{uploadProgress}%</span>
+              </div>
             ) : (
               <>
                 <Upload className="h-6 w-6 text-zinc-500 mb-2" />
@@ -318,8 +325,8 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
                 const file = e.target.files?.[0]
                 if (file) {
                   const result = await upload(file)
-                  if (result) {
-                    setImages([...images, result.url])
+                  if (result?.image?.url) {
+                    setImages([...images, result.image.url])
                   }
                 }
                 e.target.value = ''

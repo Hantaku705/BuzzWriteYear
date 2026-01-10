@@ -1,12 +1,9 @@
-# Railway Worker Service Configuration
-# This file is used when deploying the worker service to Railway
-
 [build]
 builder = "nixpacks"
 
 [deploy]
 startCommand = "npm run worker:prod"
-restartPolicyType = "always"
 healthcheckPath = ""
-
-# No health check needed for background worker
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

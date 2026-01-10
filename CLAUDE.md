@@ -73,6 +73,30 @@ REDIS_URL=
 2. SQL Editorで `supabase/combined_migration.sql` 実行
 3. `.env.local` に認証情報設定
 
+### ワーカー起動（ローカル）
+
+```bash
+# 開発環境
+npm run worker
+
+# 本番環境相当
+npm run worker:prod
+
+# dotenv-cliを使う場合
+npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
+```
+
+### ワーカー起動（Railway）
+
+1. `railway login` でログイン
+2. `railway init` でプロジェクト作成
+3. `railway add -s kling-worker` でサービス作成
+4. `railway variables --set "REDIS_URL=..." --set "KLING_API_KEY=..."` で環境変数設定
+5. Railwayダッシュボードで Start Command を `npm run worker:prod` に設定
+6. `railway up` でデプロイ
+
+**注意**: `railway.toml`のstartCommandが認識されない場合は、ダッシュボードから手動設定が必要。
+
 ---
 
 ## Key Files
@@ -89,14 +113,16 @@ REDIS_URL=
 | `src/components/auth/` | 認証フォームコンポーネント |
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
 | `src/app/(dashboard)/videos/[id]/` | 動画詳細ページ |
-| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useGenerateVideo, useVideoStatus） |
+| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useOptimizedUpload, useGenerateVideo, useVideoStatus） |
 | `src/lib/api/` | API関数（products, videos, stats, analytics） |
 | `src/lib/query/` | TanStack Query設定 |
 | `src/lib/storage/` | Supabase Storage画像アップロード |
 | `src/lib/supabase/` | Supabaseクライアント |
 | `src/lib/queue/` | BullMQキュークライアント |
 | `src/lib/tiktok/` | TikTok APIクライアント |
-| `src/lib/video/ffmpeg/` | FFmpeg UGC加工 |
+| `src/lib/image/` | 画像処理（sharp: リサイズ、WebP変換、サムネイル生成） |
+| `src/lib/video/ffmpeg/` | FFmpeg動画処理（UGC加工、トリミング、結合、字幕、コーデック変換） |
+| `src/lib/video/pipeline.ts` | 動画処理パイプライン（Remotion→FFmpeg→最適化） |
 | `src/lib/video/heygen/` | HeyGen APIクライアント |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
@@ -141,6 +167,7 @@ REDIS_URL=
 | ugc-processing | UGC風加工 |
 | heygen-generation | HeyGen動画生成 |
 | kling-generation | Kling AI動画生成 |
+| video-pipeline | 動画パイプライン処理 |
 | tiktok-posting | TikTok投稿 |
 | analytics-collection | 分析データ収集 |
 
@@ -169,6 +196,8 @@ REDIS_URL=
 | `/api/videos/[id]/status` | GET | 動画生成進捗取得 |
 | `/api/videos/[id]/cancel` | POST | 動画生成キャンセル |
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
+| `/api/images/optimize` | POST | 画像最適化・サムネイル生成（sharp） |
+| `/api/videos/pipeline` | POST | 動画パイプライン処理（UGC+字幕+最適化） |
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
 | `/api/auth/logout` | POST | ログアウト |

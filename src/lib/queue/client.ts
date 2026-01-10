@@ -42,6 +42,7 @@ export const QUEUE_NAMES = {
   KLING_GENERATION: 'kling-generation',
   TIKTOK_POSTING: 'tiktok-posting',
   ANALYTICS_COLLECTION: 'analytics-collection',
+  VIDEO_PIPELINE: 'video-pipeline',
 } as const
 
 // ジョブデータ型
@@ -99,6 +100,37 @@ export interface KlingJobData {
   presetId?: string
 }
 
+export interface PipelineJobData {
+  videoId: string
+  userId: string
+  sourceUrl: string
+  preset: 'tiktok_ugc' | 'review' | 'simple' | 'custom'
+  config?: {
+    ugcEffects?: {
+      enabled: boolean
+      effects: string[]
+      intensity?: 'light' | 'medium' | 'heavy'
+    }
+    trim?: {
+      enabled: boolean
+      startTime: number
+      endTime?: number
+    }
+    subtitles?: {
+      enabled: boolean
+      entries: Array<{
+        startTime: number
+        endTime: number
+        text: string
+      }>
+    }
+    optimize?: {
+      enabled: boolean
+      platform: 'tiktok' | 'instagram_reels' | 'youtube_shorts' | 'twitter'
+    }
+  }
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
@@ -112,6 +144,8 @@ let klingQueue: Queue | null = null
 let tiktokPostingQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let analyticsQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let pipelineQueue: Queue | null = null
 
 export const getVideoGenerationQueue = () => {
   if (!videoGenerationQueue) {
@@ -171,6 +205,16 @@ export const getAnalyticsQueue = () => {
     )
   }
   return analyticsQueue
+}
+
+export const getPipelineQueue = () => {
+  if (!pipelineQueue) {
+    pipelineQueue = new Queue(
+      QUEUE_NAMES.VIDEO_PIPELINE,
+      { connection: getRedisConnection() }
+    )
+  }
+  return pipelineQueue
 }
 
 // ジョブ追加ヘルパー
@@ -261,6 +305,22 @@ export const addKlingJob = async (
     backoff: {
       type: 'exponential',
       delay: 15000, // Kling APIは時間がかかるため長めに設定
+    },
+  })
+}
+
+export const addPipelineJob = async (
+  data: PipelineJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getPipelineQueue()
+  return queue.add('process', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
     },
   })
 }

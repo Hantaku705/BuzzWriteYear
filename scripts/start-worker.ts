@@ -343,15 +343,173 @@ worker.on('error', (error) => {
   console.error('[Worker] Worker error:', error)
 })
 
+// パイプラインワーカーも起動
+import {
+  runVideoPipeline,
+  createTikTokUGCPipeline,
+  createReviewPipeline,
+  createSimpleOptimizePipeline,
+  PipelineConfig,
+  PipelineStage,
+} from '../src/lib/video/pipeline'
+import { UGCEffect } from '../src/lib/video/ffmpeg'
+
+interface PipelineJobData {
+  videoId: string
+  userId: string
+  sourceUrl: string
+  preset: 'tiktok_ugc' | 'review' | 'simple' | 'custom'
+  config?: {
+    ugcEffects?: {
+      enabled: boolean
+      effects: string[]
+      intensity?: 'light' | 'medium' | 'heavy'
+    }
+    trim?: {
+      enabled: boolean
+      startTime: number
+      endTime?: number
+    }
+    subtitles?: {
+      enabled: boolean
+      entries: Array<{
+        startTime: number
+        endTime: number
+        text: string
+      }>
+    }
+    optimize?: {
+      enabled: boolean
+      platform: 'tiktok' | 'instagram_reels' | 'youtube_shorts' | 'twitter'
+    }
+  }
+}
+
+function createPipelineFromPreset(
+  inputPath: string,
+  preset: PipelineJobData['preset'],
+  customConfig?: PipelineJobData['config']
+): PipelineConfig {
+  switch (preset) {
+    case 'tiktok_ugc':
+      return createTikTokUGCPipeline(inputPath)
+    case 'review':
+      return createReviewPipeline(inputPath)
+    case 'simple':
+      return createSimpleOptimizePipeline(inputPath, 'tiktok')
+    case 'custom':
+      if (!customConfig) {
+        return createSimpleOptimizePipeline(inputPath, 'tiktok')
+      }
+      return {
+        inputPath,
+        ugcEffects: customConfig.ugcEffects
+          ? {
+              enabled: customConfig.ugcEffects.enabled,
+              effects: customConfig.ugcEffects.effects as UGCEffect[],
+              intensity: customConfig.ugcEffects.intensity,
+            }
+          : undefined,
+        trim: customConfig.trim,
+        subtitles: customConfig.subtitles,
+        optimize: customConfig.optimize,
+        thumbnail: { enabled: true },
+      }
+    default:
+      return createSimpleOptimizePipeline(inputPath, 'tiktok')
+  }
+}
+
+async function processPipelineJob(job: Job<PipelineJobData>) {
+  const { videoId, userId, sourceUrl, preset, config } = job.data
+  const tempDir = path.join(os.tmpdir(), `pipeline_${videoId}`)
+
+  try {
+    console.log(`[Pipeline] Processing job ${job.id} for video ${videoId}`)
+
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true })
+    }
+
+    // ダウンロード
+    await updateVideoProgress(videoId, 5, '動画をダウンロード中...')
+    const inputPath = path.join(tempDir, 'input.mp4')
+    await downloadVideo(sourceUrl, inputPath)
+
+    // パイプライン実行
+    const pipelineConfig = createPipelineFromPreset(inputPath, preset, config)
+    pipelineConfig.outputDir = tempDir
+    pipelineConfig.onProgress = async (stage: PipelineStage, progress: number, message: string) => {
+      await updateVideoProgress(videoId, progress, message)
+    }
+
+    const result = await runVideoPipeline(pipelineConfig)
+
+    if (!result.success) {
+      throw new Error(result.error || 'Pipeline failed')
+    }
+
+    // アップロード
+    await updateVideoProgress(videoId, 90, 'アップロード中...')
+    const videoUrl = await uploadToStorage(result.outputPath, videoId, userId)
+
+    // 完了
+    await updateVideoStatus(videoId, 'ready', {
+      remote_url: videoUrl,
+      duration_seconds: Math.round(result.metadata.duration),
+      progress: 100,
+      progress_message: '処理完了',
+    })
+
+    console.log(`[Pipeline] Job ${job.id} completed!`)
+    return { success: true, videoId, videoUrl }
+
+  } catch (error) {
+    console.error(`[Pipeline] Job ${job.id} failed:`, error)
+    await updateVideoStatus(videoId, 'failed', {
+      progress: 0,
+      progress_message: '処理に失敗しました',
+    })
+    throw error
+  } finally {
+    try {
+      if (fs.existsSync(tempDir)) {
+        fs.rmSync(tempDir, { recursive: true })
+      }
+    } catch (e) {
+      console.warn(`[Pipeline] Failed to cleanup: ${tempDir}`)
+    }
+  }
+}
+
+const pipelineWorker = new Worker('video-pipeline', processPipelineJob, {
+  connection,
+  concurrency: 1, // FFmpeg処理のため同時実行数を制限
+})
+
+pipelineWorker.on('ready', () => {
+  console.log('[Pipeline] Worker is ready')
+})
+
+pipelineWorker.on('completed', (job) => {
+  console.log(`[Pipeline] Job ${job.id} completed`)
+})
+
+pipelineWorker.on('failed', (job, error) => {
+  console.error(`[Pipeline] Job ${job?.id} failed:`, error.message)
+})
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('[Worker] Shutting down...')
   await worker.close()
+  await pipelineWorker.close()
   process.exit(0)
 })
 
 process.on('SIGINT', async () => {
   console.log('[Worker] Shutting down...')
   await worker.close()
+  await pipelineWorker.close()
   process.exit(0)
 })

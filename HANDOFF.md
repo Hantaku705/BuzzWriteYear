@@ -50,7 +50,7 @@
 - [x] **ワーカースクリプト作成（scripts/start-worker.ts）**
 
 ### 作業中のタスク
-- なし
+- [ ] **Railway本番ワーカーデプロイ（トラブルシューティング中）**
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -64,12 +64,16 @@
 
 ## 次のアクション
 
-### FFmpeg・ImageMagick拡張（検討中）
-ユーザーの選択待ち。以下のいずれかを実装予定:
-1. **画像最適化** - 商品画像の自動処理（背景除去、リサイズ、WebP変換）
-2. **動画編集強化** - トリミング・結合・字幕機能
-3. **統合パイプライン** - Remotion出力の後処理自動化
-4. **バリアント生成** - A/Bテスト用の複数パターン一括生成
+### 優先度1: Railway本番ワーカーデプロイ完了
+- Railwayプロジェクト作成済み: `buzzwriteyear-worker`
+- 環境変数設定済み（REDIS_URL, SUPABASE, KLING_API_KEY）
+- 問題: railway.tomlの`startCommand`が認識されず、`npm start`（Next.js）が起動してしまう
+- 確認URL: https://railway.com/project/33cb5490-c48e-4ae8-891e-2a8eb0c1e8fd
+
+**解決策候補**:
+1. Railwayダッシュボードから直接Start Commandを設定
+2. 別のサービスとしてワーカー専用リポジトリを作成
+3. Dockerfile使用
 
 ### ワーカー起動方法（ローカル）
 ```bash
@@ -94,22 +98,38 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 - http://localhost:3000/videos - 動画管理
 
 ## 未解決の問題
-- なし
+- **Railway本番ワーカーデプロイ**: `railway.toml`の`startCommand`が認識されず、Next.jsが起動してしまう。ダッシュボードから手動設定するか、Dockerfile使用が必要。
 
 ## 未コミット変更
 ```
- M README.md
+ M CLAUDE.md
  M package-lock.json
  M package.json
-?? railway-worker.toml
+ M railway.toml
 ```
 
 ## 最新コミット
 ```
-64998a9 feat: Upstash Redis設定・Kling API修正・ワーカースクリプト追加
+4f39673 docs: セッション11記録・Railwayワーカー設定追加
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション12）
+- **Railway本番ワーカーデプロイ開始**
+  - Railway CLIインストール・ログイン
+  - プロジェクト作成: `buzzwriteyear-worker`
+  - サービス作成: `kling-worker`
+  - 環境変数設定（REDIS_URL, SUPABASE, KLING_API_KEY）
+- **ワーカー設定ファイル作成**
+  - `railway.toml` - 起動コマンド設定
+  - package.json更新 - `worker`, `worker:prod`スクリプト追加
+  - tsx, typescriptをdependenciesに移動（本番ビルド用）
+  - dotenvパッケージ追加
+- **問題発生**: railway.tomlのstartCommandが認識されず
+  - Next.js（`npm start`）が起動してしまう
+  - 複数回再デプロイを試みるも失敗
+  - ダッシュボードからの手動設定またはDockerfile使用が必要
 
 ### 2026-01-11（セッション11）
 - **FFmpeg・ImageMagick拡張方向性の調査・提案**
