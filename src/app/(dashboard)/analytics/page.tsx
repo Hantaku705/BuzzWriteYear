@@ -17,155 +17,85 @@ import {
   Calendar,
   Download,
   Trophy,
+  Loader2,
 } from 'lucide-react'
+import {
+  useAnalyticsSummary,
+  useGMVData,
+  useVideoPerformance,
+  useTemplatePerformance,
+} from '@/hooks/useAnalytics'
 
-// サンプルデータ（実際にはSupabaseから取得）
+// サンプルデータ（データがない場合のフォールバック）
 const sampleGMVData = [
-  { date: '12/01', gmv: 45000, orders: 3, views: 12500, clicks: 450 },
-  { date: '12/02', gmv: 62000, orders: 5, views: 18200, clicks: 620 },
-  { date: '12/03', gmv: 38000, orders: 2, views: 9800, clicks: 280 },
-  { date: '12/04', gmv: 89000, orders: 7, views: 25600, clicks: 890 },
-  { date: '12/05', gmv: 72000, orders: 6, views: 21000, clicks: 710 },
-  { date: '12/06', gmv: 95000, orders: 8, views: 32100, clicks: 950 },
-  { date: '12/07', gmv: 118000, orders: 10, views: 41200, clicks: 1180 },
-]
-
-const sampleVideoPerformance = [
-  {
-    id: '1',
-    title: '【話題】この美容液がすごい...',
-    templateType: '商品紹介',
-    postedAt: '2024/12/07 14:30',
-    views: 125000,
-    likes: 8500,
-    comments: 420,
-    shares: 890,
-    clicks: 3200,
-    orders: 45,
-    gmv: 157500,
-    conversionRate: 0.014,
-    trend: 'up' as const,
-  },
-  {
-    id: '2',
-    title: 'Before/After 驚きの変化',
-    templateType: 'Before/After',
-    postedAt: '2024/12/06 18:00',
-    views: 89000,
-    likes: 6200,
-    comments: 310,
-    shares: 560,
-    clicks: 2100,
-    orders: 28,
-    gmv: 98000,
-    conversionRate: 0.013,
-    trend: 'up' as const,
-  },
-  {
-    id: '3',
-    title: '正直レビュー #本音',
-    templateType: 'レビュー風',
-    postedAt: '2024/12/05 12:00',
-    views: 56000,
-    likes: 4100,
-    comments: 280,
-    shares: 340,
-    clicks: 1400,
-    orders: 15,
-    gmv: 52500,
-    conversionRate: 0.011,
-    trend: 'stable' as const,
-  },
-]
-
-const sampleTemplatePerformance = [
-  {
-    id: '1',
-    name: '商品紹介 - ベーシック',
-    type: 'remotion' as const,
-    contentType: 'product_intro',
-    videoCount: 24,
-    totalViews: 890000,
-    totalGmv: 485000,
-    avgConversionRate: 0.014,
-    performanceScore: 0,
-  },
-  {
-    id: '2',
-    name: 'Before/After 比較',
-    type: 'remotion' as const,
-    contentType: 'before_after',
-    videoCount: 18,
-    totalViews: 620000,
-    totalGmv: 312000,
-    avgConversionRate: 0.012,
-    performanceScore: 0,
-  },
-  {
-    id: '3',
-    name: 'レビュー風テキスト',
-    type: 'remotion' as const,
-    contentType: 'review',
-    videoCount: 15,
-    totalViews: 420000,
-    totalGmv: 189000,
-    avgConversionRate: 0.009,
-    performanceScore: 0,
-  },
-  {
-    id: '4',
-    name: 'UGC風加工',
-    type: 'ffmpeg' as const,
-    contentType: 'ugc',
-    videoCount: 12,
-    totalViews: 380000,
-    totalGmv: 256000,
-    avgConversionRate: 0.013,
-    performanceScore: 0,
-  },
-]
-
-const stats = [
-  {
-    title: '総GMV',
-    value: '¥519,000',
-    change: '+23.5%',
-    icon: DollarSign,
-    description: '売上貢献額',
-  },
-  {
-    title: '総再生数',
-    value: '160.4K',
-    change: '+18.2%',
-    icon: Eye,
-    description: '全動画の合計',
-  },
-  {
-    title: '総エンゲージメント',
-    value: '21.6K',
-    change: '+15.8%',
-    icon: Heart,
-    description: 'いいね・コメント・シェア',
-  },
-  {
-    title: 'コンバージョン率',
-    value: '1.28%',
-    change: '+0.12%',
-    icon: ShoppingCart,
-    description: '視聴→購入',
-  },
+  { date: '12/01', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/02', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/03', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/04', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/05', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/06', gmv: 0, orders: 0, views: 0, clicks: 0 },
+  { date: '12/07', gmv: 0, orders: 0, views: 0, clicks: 0 },
 ]
 
 export default function AnalyticsPage() {
-  const [dateRange, setDateRange] = useState('30d')
   const [chartMetric, setChartMetric] = useState<'gmv' | 'orders' | 'views' | 'clicks'>('gmv')
 
-  // データがあるかどうか（実際にはSupabaseから取得してチェック）
-  const hasData = true // サンプルデータがあるのでtrue
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary()
+  const { data: gmvData = [], isLoading: gmvLoading } = useGMVData(30)
+  const { data: videoPerformance = [], isLoading: videosLoading } = useVideoPerformance()
+  const { data: templatePerformance = [], isLoading: templatesLoading } = useTemplatePerformance()
+
+  const hasData = gmvData.length > 0 || videoPerformance.length > 0
+  const chartData = gmvData.length > 0 ? gmvData : sampleGMVData
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('ja-JP', {
+      style: 'currency',
+      currency: 'JPY',
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
+    return value.toString()
+  }
 
   const lowPerformers = useMemo(() => {
-    return sampleTemplatePerformance.filter((t) => t.avgConversionRate < 0.01)
-  }, [])
+    return templatePerformance.filter((t) => t.avgConversionRate < 0.01)
+  }, [templatePerformance])
+
+  const stats = [
+    {
+      title: '総GMV',
+      value: summary ? formatCurrency(summary.totalGmv) : '¥0',
+      icon: DollarSign,
+      description: '売上貢献額',
+    },
+    {
+      title: '総再生数',
+      value: summary ? formatNumber(summary.totalViews) : '0',
+      icon: Eye,
+      description: '全動画の合計',
+    },
+    {
+      title: '総エンゲージメント',
+      value: summary
+        ? formatNumber(summary.totalLikes + summary.totalComments + summary.totalShares)
+        : '0',
+      icon: Heart,
+      description: 'いいね・コメント・シェア',
+    },
+    {
+      title: 'コンバージョン率',
+      value: summary ? `${(summary.avgConversionRate * 100).toFixed(2)}%` : '0%',
+      icon: ShoppingCart,
+      description: '視聴→購入',
+    },
+  ]
+
+  const isLoading = summaryLoading || gmvLoading || videosLoading || templatesLoading
 
   return (
     <div className="space-y-6">
@@ -198,11 +128,14 @@ export default function AnalyticsPage() {
               <stat.icon className="h-4 w-4 text-zinc-400" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-xs text-zinc-500">{stat.description}</span>
-                <span className="text-xs text-green-500">{stat.change}</span>
-              </div>
+              {summaryLoading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-pink-500" />
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-white">{stat.value}</div>
+                  <span className="text-xs text-zinc-500">{stat.description}</span>
+                </>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -235,16 +168,12 @@ export default function AnalyticsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {hasData ? (
-              <GMVChart data={sampleGMVData} metric={chartMetric} />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <BarChart3 className="h-16 w-16 text-zinc-700 mb-4" />
-                <p className="text-zinc-400">データがありません</p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  動画を投稿するとGMVデータが表示されます
-                </p>
+            {gmvLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
               </div>
+            ) : (
+              <GMVChart data={chartData} metric={chartMetric} />
             )}
           </CardContent>
         </Card>
@@ -255,16 +184,12 @@ export default function AnalyticsPage() {
             <CardTitle className="text-white">マルチ指標比較</CardTitle>
           </CardHeader>
           <CardContent>
-            {hasData ? (
-              <MultiMetricChart data={sampleGMVData} />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <TrendingUp className="h-16 w-16 text-zinc-700 mb-4" />
-                <p className="text-zinc-400">データがありません</p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  動画を投稿するとエンゲージメントデータが表示されます
-                </p>
+            {gmvLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
               </div>
+            ) : (
+              <MultiMetricChart data={chartData} />
             )}
           </CardContent>
         </Card>
@@ -272,11 +197,11 @@ export default function AnalyticsPage() {
 
       {/* Performance Summary */}
       <PerformanceSummary
-        totalGmv={519000}
-        totalOrders={88}
-        totalViews={160400}
-        avgConversionRate={0.0128}
-        gmvChange={0.235}
+        totalGmv={summary?.totalGmv || 0}
+        totalOrders={summary?.totalOrders || 0}
+        totalViews={summary?.totalViews || 0}
+        avgConversionRate={summary?.avgConversionRate || 0}
+        gmvChange={0}
       />
 
       {/* Two Column Layout */}
@@ -287,49 +212,42 @@ export default function AnalyticsPage() {
             <CardTitle className="text-white">動画パフォーマンス</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="gmv">
-              <TabsList className="bg-zinc-800 border-zinc-700">
-                <TabsTrigger value="gmv" className="data-[state=active]:bg-zinc-700">
-                  GMV順
-                </TabsTrigger>
-                <TabsTrigger value="views" className="data-[state=active]:bg-zinc-700">
-                  再生数順
-                </TabsTrigger>
-                <TabsTrigger value="cvr" className="data-[state=active]:bg-zinc-700">
-                  CVR順
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="gmv" className="mt-4">
-                {hasData ? (
-                  <ConversionTable data={sampleVideoPerformance} sortBy="gmv" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <DollarSign className="h-12 w-12 text-zinc-700 mb-4" />
-                    <p className="text-zinc-400">まだデータがありません</p>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="views" className="mt-4">
-                {hasData ? (
-                  <ConversionTable data={sampleVideoPerformance} sortBy="views" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Eye className="h-12 w-12 text-zinc-700 mb-4" />
-                    <p className="text-zinc-400">まだデータがありません</p>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="cvr" className="mt-4">
-                {hasData ? (
-                  <ConversionTable data={sampleVideoPerformance} sortBy="conversionRate" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <Heart className="h-12 w-12 text-zinc-700 mb-4" />
-                    <p className="text-zinc-400">まだデータがありません</p>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            {videosLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+              </div>
+            ) : videoPerformance.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <DollarSign className="h-12 w-12 text-zinc-700 mb-4" />
+                <p className="text-zinc-400">まだデータがありません</p>
+                <p className="text-sm text-zinc-500 mt-1">
+                  動画を投稿するとパフォーマンスデータが表示されます
+                </p>
+              </div>
+            ) : (
+              <Tabs defaultValue="gmv">
+                <TabsList className="bg-zinc-800 border-zinc-700">
+                  <TabsTrigger value="gmv" className="data-[state=active]:bg-zinc-700">
+                    GMV順
+                  </TabsTrigger>
+                  <TabsTrigger value="views" className="data-[state=active]:bg-zinc-700">
+                    再生数順
+                  </TabsTrigger>
+                  <TabsTrigger value="cvr" className="data-[state=active]:bg-zinc-700">
+                    CVR順
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="gmv" className="mt-4">
+                  <ConversionTable data={videoPerformance} sortBy="gmv" />
+                </TabsContent>
+                <TabsContent value="views" className="mt-4">
+                  <ConversionTable data={videoPerformance} sortBy="views" />
+                </TabsContent>
+                <TabsContent value="cvr" className="mt-4">
+                  <ConversionTable data={videoPerformance} sortBy="conversionRate" />
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
 
@@ -342,15 +260,11 @@ export default function AnalyticsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {hasData ? (
-              <>
-                <WinningTemplates templates={sampleTemplatePerformance} />
-                <RecommendedActions
-                  topTemplate={sampleTemplatePerformance[0]}
-                  lowPerformers={lowPerformers}
-                />
-              </>
-            ) : (
+            {templatesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+              </div>
+            ) : templatePerformance.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Trophy className="h-12 w-12 text-zinc-700 mb-4" />
                 <p className="text-zinc-400">まだデータがありません</p>
@@ -360,6 +274,14 @@ export default function AnalyticsPage() {
                   パフォーマンス分析が表示されます
                 </p>
               </div>
+            ) : (
+              <>
+                <WinningTemplates templates={templatePerformance} />
+                <RecommendedActions
+                  topTemplate={templatePerformance[0]}
+                  lowPerformers={lowPerformers}
+                />
+              </>
             )}
           </CardContent>
         </Card>

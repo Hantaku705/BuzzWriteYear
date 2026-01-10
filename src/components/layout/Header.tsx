@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import { Bell, Search, LogOut, Settings, User } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -11,8 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/hooks/useAuth'
 
 export function Header() {
+  const router = useRouter()
+  const { user, signOut } = useAuth()
+
+  const userInitial = user?.email?.charAt(0).toUpperCase() ?? 'U'
+
+  const handleLogout = async () => {
+    await signOut()
+  }
+
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-sm px-6">
       <div className="flex flex-1 items-center gap-4">
@@ -33,15 +44,28 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-pink-500 text-white">U</AvatarFallback>
+                <AvatarFallback className="bg-pink-500 text-white">{userInitial}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuItem>プロフィール</DropdownMenuItem>
-            <DropdownMenuItem>設定</DropdownMenuItem>
+            <div className="px-2 py-1.5 text-sm text-zinc-400">
+              {user?.email ?? 'ゲスト'}
+            </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-500">ログアウト</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <User className="mr-2 h-4 w-4" />
+              プロフィール
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              設定
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-red-500">
+              <LogOut className="mr-2 h-4 w-4" />
+              ログアウト
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

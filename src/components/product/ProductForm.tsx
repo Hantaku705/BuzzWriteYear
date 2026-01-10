@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, X, Plus } from 'lucide-react'
+import { Upload, X, Plus, Loader2 } from 'lucide-react'
+import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts'
+import { useUpload } from '@/hooks/useUpload'
 
 interface ProductFormProps {
   onSuccess?: () => void
+  productId?: string
   initialData?: {
     name: string
     description: string
@@ -18,13 +21,18 @@ interface ProductFormProps {
   }
 }
 
-export function ProductForm({ onSuccess, initialData }: ProductFormProps) {
+export function ProductForm({ onSuccess, productId, initialData }: ProductFormProps) {
   const [name, setName] = useState(initialData?.name || '')
   const [description, setDescription] = useState(initialData?.description || '')
   const [price, setPrice] = useState(initialData?.price?.toString() || '')
   const [features, setFeatures] = useState<string[]>(initialData?.features || [''])
   const [images, setImages] = useState<string[]>(initialData?.images || [])
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createProduct = useCreateProduct()
+  const updateProduct = useUpdateProduct()
+  const { upload, uploading } = useUpload()
+  const isLoading = createProduct.isPending || updateProduct.isPending
 
   const addFeature = () => {
     setFeatures([...features, ''])
@@ -42,23 +50,26 @@ export function ProductForm({ onSuccess, initialData }: ProductFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setError(null)
+
+    const productData = {
+      name,
+      description: description || null,
+      price: parseFloat(price),
+      features: features.filter((f) => f.trim() !== ''),
+      images,
+      video_urls: [],
+    }
 
     try {
-      // TODO: Implement Supabase insert
-      console.log({
-        name,
-        description,
-        price: parseFloat(price),
-        features: features.filter((f) => f.trim() !== ''),
-        images,
-      })
-
+      if (productId) {
+        await updateProduct.mutateAsync({ id: productId, product: productData })
+      } else {
+        await createProduct.mutateAsync(productData)
+      }
       onSuccess?.()
-    } catch (error) {
-      console.error('Error saving product:', error)
-    } finally {
-      setIsLoading(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存に失敗しました')
     }
   }
 
@@ -177,28 +188,41 @@ export function ProductForm({ onSuccess, initialData }: ProductFormProps) {
               </Button>
             </div>
           ))}
-          <label className="aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 transition-colors">
-            <Upload className="h-6 w-6 text-zinc-500 mb-2" />
-            <span className="text-xs text-zinc-500">アップロード</span>
+          <label className={`aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            {uploading ? (
+              <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
+            ) : (
+              <>
+                <Upload className="h-6 w-6 text-zinc-500 mb-2" />
+                <span className="text-xs text-zinc-500">アップロード</span>
+              </>
+            )}
             <input
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => {
-                // TODO: Implement image upload to Supabase Storage
+              disabled={uploading}
+              onChange={async (e) => {
                 const file = e.target.files?.[0]
                 if (file) {
-                  const reader = new FileReader()
-                  reader.onloadend = () => {
-                    setImages([...images, reader.result as string])
+                  const result = await upload(file)
+                  if (result) {
+                    setImages([...images, result.url])
                   }
-                  reader.readAsDataURL(file)
                 }
+                e.target.value = ''
               }}
             />
           </label>
         </div>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="p-3 text-sm text-red-500 bg-red-500/10 rounded-md">
+          {error}
+        </div>
+      )}
 
       {/* Submit */}
       <div className="flex justify-end gap-3 pt-4">
@@ -215,7 +239,8 @@ export function ProductForm({ onSuccess, initialData }: ProductFormProps) {
           className="bg-pink-500 hover:bg-pink-600"
           disabled={isLoading}
         >
-          {isLoading ? '保存中...' : '商品を保存'}
+          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isLoading ? '保存中...' : productId ? '商品を更新' : '商品を保存'}
         </Button>
       </div>
     </form>

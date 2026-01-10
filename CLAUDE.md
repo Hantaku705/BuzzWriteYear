@@ -84,6 +84,12 @@ REDIS_URL=
 | `src/components/product/` | 商品関連コンポーネント |
 | `src/components/video/` | 動画プレビュー（RemotionPreview） |
 | `src/components/analytics/` | 分析ダッシュボードコンポーネント |
+| `src/components/auth/` | 認証フォームコンポーネント |
+| `src/app/(auth)/` | 認証ページ（login, signup, callback） |
+| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload） |
+| `src/lib/api/` | API関数（products, videos, stats, analytics） |
+| `src/lib/query/` | TanStack Query設定 |
+| `src/lib/storage/` | Supabase Storage画像アップロード |
 | `src/lib/supabase/` | Supabaseクライアント |
 | `src/lib/queue/` | BullMQキュークライアント |
 | `src/lib/tiktok/` | TikTok APIクライアント |
@@ -155,6 +161,7 @@ REDIS_URL=
 | `/api/videos/generate` | POST | 動画生成ジョブ作成 |
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
+| `/api/auth/logout` | POST | ログアウト |
 
 ---
 
@@ -175,6 +182,7 @@ REDIS_URL=
 - [x] Phase 3: UGC風・HeyGen連携
 - [x] Phase 4: TikTok連携
 - [x] Phase 5: 分析・最適化
+- [x] Phase 6: データ連携完全実装（認証 + TanStack Query + CRUD）
 
 ---
 
@@ -186,6 +194,7 @@ REDIS_URL=
 | Zod v4 `error.errors` | `error.issues` に変更 |
 | BullMQ + ioredis型衝突 | ioredis削除、ConnectionOptionsで直接指定 |
 | Supabase insert型エラー | `as never` 型アサーション使用 |
+| Supabase SSR型推論エラー | 明示的型定義 + `as TypeName` アサーション |
 | Recharts Tooltip formatter | `value as number` でキャスト |
 | Node.js fetch Buffer | `Blob` に変換して送信 |
 
@@ -218,6 +227,24 @@ const connection: ConnectionOptions = {
   maxRetriesPerRequest: null,
 }
 new Queue('name', { connection })
+```
+
+### Supabase SSR 型推論問題
+
+```typescript
+// NG: Supabase clientが`never`型を返す
+const { data } = await supabase.from('products').select('*')
+for (const p of data) { // error: p is never
+  console.log(p.name)
+}
+
+// OK: 明示的型定義 + アサーション
+type ProductRow = { id: string; name: string; price: number }
+const { data } = await supabase.from('products').select('*')
+const products = (data as ProductRow[] | null) ?? []
+for (const p of products) {
+  console.log(p.name)
+}
 ```
 
 ---
