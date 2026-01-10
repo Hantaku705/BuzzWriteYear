@@ -81,14 +81,16 @@ export async function generateImageToVideo(
   request: Omit<KlingGenerationRequest, 'mode'> & { imageUrl: string }
 ): Promise<KlingTaskResponse> {
   const payload = {
-    model: request.model || 'kling-v1-6',
-    task_type: 'image_to_video',
+    model: 'kling',
+    task_type: 'video_generation',
     input: {
       image_url: request.imageUrl,
       prompt: request.prompt,
       negative_prompt: request.negativePrompt || '',
       duration: request.duration || 5,
       aspect_ratio: request.aspectRatio || '9:16',
+      mode: request.quality === 'pro' ? 'pro' : 'std',
+      version: '1.6',
     },
   }
 
@@ -108,13 +110,15 @@ export async function generateTextToVideo(
   request: Omit<KlingGenerationRequest, 'mode' | 'imageUrl'>
 ): Promise<KlingTaskResponse> {
   const payload = {
-    model: request.model || 'kling-v1-6',
-    task_type: 'text_to_video',
+    model: 'kling',
+    task_type: 'video_generation',
     input: {
       prompt: request.prompt,
       negative_prompt: request.negativePrompt || '',
       duration: request.duration || 5,
       aspect_ratio: request.aspectRatio || '9:16',
+      mode: request.quality === 'pro' ? 'pro' : 'std',
+      version: '1.6',
     },
   }
 
@@ -133,10 +137,17 @@ export async function generateTextToVideo(
 export async function getTaskStatus(
   taskId: string
 ): Promise<KlingTaskStatusResponse> {
-  const response = await klingRequest<{ data: KlingTaskStatusResponse }>(
+  const response = await klingRequest<{ data: KlingTaskStatusResponse & { output?: { video_url?: string } } }>(
     `/api/v1/task/${taskId}`
   )
-  return response.data
+
+  const data = response.data
+  // video_urlを複数の場所から取得
+  if (!data.video_url && data.output?.video_url) {
+    data.video_url = data.output.video_url
+  }
+
+  return data
 }
 
 // 動画完了まで待機（ポーリング）

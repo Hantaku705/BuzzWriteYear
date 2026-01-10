@@ -14,12 +14,14 @@ const getRedisConnection = (): ConnectionOptions => {
   // Parse Redis URL for connection options
   try {
     const url = new URL(redisUrl)
+    const useTls = url.protocol === 'rediss:'
     return {
       host: url.hostname,
       port: parseInt(url.port) || 6379,
       password: url.password || undefined,
       username: url.username || undefined,
       maxRetriesPerRequest: null,
+      tls: useTls ? {} : undefined,
     }
   } catch {
     // If URL parsing fails, return localhost defaults

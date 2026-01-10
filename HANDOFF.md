@@ -45,9 +45,12 @@
 - [x] **Kling AI E2Eテスト（全5テスト合格）**
 - [x] **商品URL自動入力機能（スクレイピング + LLM分析）**
 - [x] **動画生成進捗表示・キャンセル機能**
+- [x] **Upstash Redis設定（BullMQキュー有効化）**
+- [x] **Kling API修正（PiAPI正しい形式に対応）**
+- [x] **ワーカースクリプト作成（scripts/start-worker.ts）**
 
 ### 作業中のタスク
-- [ ] DBマイグレーション実行（progress, progress_messageカラム追加）
+- なし
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -56,11 +59,22 @@
 - [x] **Supabaseマイグレーション実行完了**
 - [x] 新Supabaseプロジェクト作成（buzzwriteyear / dziamclndwokodzcczpq）
 - [x] **Playwright E2Eテスト（9/9 Pass）**
+- [x] **Upstash Redis設定（REDIS_URL）**
+- [x] **DBマイグレーション実行完了（progress, progress_messageカラム）**
 
 ## 次のアクション
 
+### ワーカー起動方法（ローカル）
+```bash
+npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
+```
+
+### 本番ワーカー（Railway等で常時起動推奨）
+- 現在はローカルでワーカーを起動する必要あり
+- Railwayなどで`scripts/start-worker.ts`を常時起動すると本番で動画生成可能
+
 ### オプション設定（機能拡張）
-- **Redis (Upstash)**: `REDIS_URL` を設定するとジョブキューが有効に
+- **Redis (Upstash)**: ✅ 設定済み
 - **Kling AI**: `KLING_API_KEY` でAI動画生成機能が有効に（PiAPI経由、$0.16〜/動画）
 - **TikTok API**: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` で投稿機能が有効に
 - **HeyGen API**: `HEYGEN_API_KEY` でAIアバター機能が有効に
@@ -79,23 +93,39 @@
 ```
  M package-lock.json
  M package.json
- M src/components/video/VideoGenerateModal.tsx
- M src/types/database.ts
- M src/workers/kling.worker.ts
- M supabase/combined_migration.sql
-?? src/app/api/videos/[id]/
-?? src/components/ui/progress.tsx
-?? src/hooks/useVideoStatus.ts
-?? supabase/migrations/003_add_video_progress.sql
-?? tests/screenshots/kling-test-video.mp4
+ M src/lib/queue/client.ts
+ M src/lib/video/kling/client.ts
+?? scripts/
 ```
 
 ## 最新コミット
 ```
-c12f41a docs: HANDOFF.md・CLAUDE.md更新（セッション8）
+f5e443b feat: 動画生成進捗表示・キャンセル機能を実装
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション10）
+- **Upstash Redis設定・BullMQキュー有効化**
+  - Upstash Redisデータベース作成（integral-shepherd-37224）
+  - REDIS_URL環境変数をVercel/ローカルに追加
+  - BullMQ接続でTLS対応（rediss://）
+- **DBマイグレーション実行**
+  - progress, progress_messageカラム追加完了
+  - pgクライアントでマイグレーションスクリプト実行
+- **Kling API修正（PiAPI正しい形式に対応）**
+  - エンドポイント: `/api/v1/task`
+  - モデル名: `kling`（`kling-v1-6`から変更）
+  - task_type: `video_generation`（`image_to_video`から変更）
+  - input構造: `mode: 'std'`, `version: '1.6'`追加
+  - video_url取得ロジック修正（output.video_url対応）
+- **ワーカースクリプト作成**
+  - `scripts/start-worker.ts` - 独立実行可能なワーカー
+  - `scripts/run-migration.js` - DBマイグレーションスクリプト
+- **動画生成テスト成功**
+  - 2件の動画を正常に生成完了
+  - 生成URL: storage.theapi.app経由
+- Vercelデプロイ完了
 
 ### 2026-01-10（セッション9）
 - **動画生成進捗表示・キャンセル機能を実装**
@@ -104,22 +134,9 @@ c12f41a docs: HANDOFF.md・CLAUDE.md更新（セッション8）
   - 進捗取得API（/api/videos/[id]/status）
   - キャンセルAPI（/api/videos/[id]/cancel）
   - ワーカー進捗更新（kling.worker.ts）
-    - 進捗をDBに保存（10-85%範囲でマッピング）
-    - キャンセルチェック機能
-    - 進捗ステージ別メッセージ
   - 進捗ポーリングフック（useVideoStatus.ts）
-    - TanStack Queryでポーリング
-    - キャンセル用mutation
   - 進捗表示UI（VideoGenerateModal.tsx）
-    - プログレスバー（0-100%）
-    - ステータスメッセージ
-    - 経過時間表示
-    - キャンセルボタン
-    - 完了/失敗時のアイコン表示
-    - 3秒後自動クローズ
   - shadcn/ui Progressコンポーネント追加
-  - Vercelデプロイ完了
-- **未実行**: Supabase DBマイグレーション（progress, progress_messageカラム追加）
 
 ### 2026-01-10（セッション8）
 - **商品URL自動入力機能を実装**
