@@ -42,6 +42,7 @@
 - [x] **Vercelデプロイ（buzzwriteyear.vercel.app）**
 - [x] **動画ダウンロード機能（VideoDownloadButton）**
 - [x] **Kling AI動画生成機能**
+- [x] **Kling AI E2Eテスト（全5テスト合格）**
 
 ### 作業中のタスク
 - なし
@@ -74,15 +75,30 @@
 
 ## 未コミット変更
 ```
-なし
+ M src/app/(dashboard)/videos/page.tsx
+?? tests/e2e/kling-generation.spec.ts
+?? tests/screenshots/kling-mode-selection.png
+?? tests/screenshots/kling-product-selection.png
 ```
 
 ## 最新コミット
 ```
-43aaa84 docs: CLAUDE.mdにKling AI情報を追加
+a38670a docs: HANDOFF.md最新コミット更新
 ```
 
 ## セッション履歴
+
+### 2026-01-10（セッション7）
+- **Kling AI E2Eテスト追加（全5テスト合格）**
+  - 動画生成モーダルが開き、AI生成モードが選択できる
+  - AI生成モードを選択して商品選択画面に進める
+  - 商品がない場合のメッセージが表示される
+  - プリセット選択UIが正しく表示される
+  - AI動画生成ボタンが表示され、クリックできる
+- **動画ページUI改善**
+  - 未認証でも「動画を生成」ボタンを表示（モーダルUI確認可能に）
+  - LoginPromptは本文エリアに表示（認証促進UI）
+- スクリーンショット追加（kling-mode-selection.png, kling-product-selection.png）
 
 ### 2026-01-10（セッション6）
 - **動画ダウンロード機能を実装**

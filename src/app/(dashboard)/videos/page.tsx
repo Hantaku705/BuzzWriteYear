@@ -106,21 +106,8 @@ export default function VideosPage() {
     )
   }
 
-  // Show login prompt if not authenticated
-  if (!authLoading && !isAuthenticated) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">動画管理</h1>
-          <p className="text-zinc-400">生成した動画を管理・投稿</p>
-        </div>
-        <LoginPrompt
-          title="ログインして動画を管理"
-          description="Googleアカウントでログインすると、生成した動画の履歴を保存・管理できます。TikTokへの投稿も可能です。"
-        />
-      </div>
-    )
-  }
+  // Show limited UI if not authenticated (allow modal preview but prompt login for actions)
+  const showLoginPrompt = !authLoading && !isAuthenticated
 
   return (
     <div className="space-y-6">
@@ -139,8 +126,16 @@ export default function VideosPage() {
         </Button>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Login Prompt (shown when not authenticated) */}
+      {showLoginPrompt && (
+        <LoginPrompt
+          title="ログインして動画を管理"
+          description="Googleアカウントでログインすると、生成した動画の履歴を保存・管理できます。TikTokへの投稿も可能です。"
+        />
+      )}
+
+      {/* Tabs (only shown when authenticated) */}
+      {!showLoginPrompt && <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <TabsList className="bg-zinc-900 border border-zinc-800">
             <TabsTrigger value="all" className="data-[state=active]:bg-zinc-800">
@@ -225,7 +220,7 @@ export default function VideosPage() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+      </Tabs>}
 
       {/* Quick Templates */}
       <Card className="bg-zinc-900 border-zinc-800">
