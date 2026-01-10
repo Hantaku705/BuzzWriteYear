@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { addPipelineJob } from '@/lib/queue/client'
+import type { Database } from '@/types/database'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+type VideoRow = Database['public']['Tables']['videos']['Row']
 
 export interface PipelineJobRequest {
   videoId: string // 既存の動画ID（remote_urlを持つ）
@@ -39,6 +37,17 @@ export interface PipelineJobRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body: PipelineJobRequest = await request.json()
     const { videoId, preset = 'simple', config } = body
 
@@ -49,19 +58,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 動画データを取得
-    const { data: video, error: fetchError } = await supabase
+    // 動画データを取得（ユーザー所有確認を含む）
+    const { data: videoData, error: fetchError } = await supabase
       .from('videos')
       .select('*')
       .eq('id', videoId)
+      .eq('user_id', user.id)
       .single()
 
-    if (fetchError || !video) {
+    if (fetchError || !videoData) {
       return NextResponse.json(
         { error: 'Video not found' },
         { status: 404 }
       )
     }
+
+    const video = videoData as VideoRow
 
     if (!video.remote_url) {
       return NextResponse.json(
@@ -77,7 +89,7 @@ export async function POST(request: NextRequest) {
         status: 'processing',
         progress: 0,
         progress_message: 'パイプライン処理をキューに追加中...',
-      })
+      } as never)
       .eq('id', videoId)
 
     // パイプラインジョブをキューに追加

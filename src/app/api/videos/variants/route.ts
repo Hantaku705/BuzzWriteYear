@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { addVariantJob } from '@/lib/queue/client'
+import type { Database } from '@/types/database'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+type VideoRow = Database['public']['Tables']['videos']['Row']
 
 export interface VariantJobRequest {
   videoId: string // 元動画のID
@@ -32,6 +30,17 @@ export interface VariantJobRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body: VariantJobRequest = await request.json()
     const { videoId, preset, customVariants, subtitleTexts } = body
 
@@ -42,19 +51,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 元動画を取得
-    const { data: video, error: fetchError } = await supabase
+    // 元動画を取得（ユーザー所有確認を含む）
+    const { data: videoData, error: fetchError } = await supabase
       .from('videos')
       .select('*')
       .eq('id', videoId)
+      .eq('user_id', user.id)
       .single()
 
-    if (fetchError || !video) {
+    if (fetchError || !videoData) {
       return NextResponse.json(
         { error: 'Video not found' },
         { status: 404 }
       )
     }
+
+    const video = videoData as VideoRow
 
     if (!video.remote_url) {
       return NextResponse.json(
@@ -128,7 +140,7 @@ export async function POST(request: NextRequest) {
       preset,
       customVariants,
       subtitleTexts,
-      duration: video.duration_seconds || video.duration || 10,
+      duration: video.duration_seconds || 10,
     })
 
     return NextResponse.json({
@@ -151,6 +163,17 @@ export async function POST(request: NextRequest) {
 // バリアント一覧を取得
 export async function GET(request: NextRequest) {
   try {
+    // 認証チェック
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const sourceVideoId = searchParams.get('sourceVideoId')
 
@@ -161,9 +184,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // ユーザー所有の動画のみ取得
     const { data: variants, error } = await supabase
       .from('videos')
       .select('*')
+      .eq('user_id', user.id)
       .contains('metadata', { sourceVideoId })
       .order('created_at', { ascending: true })
 

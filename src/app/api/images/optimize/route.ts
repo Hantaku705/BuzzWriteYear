@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import {
   processImage,
   generateThumbnails,
@@ -7,16 +7,24 @@ import {
   DEFAULT_SIZES,
 } from '@/lib/image'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 export async function POST(request: NextRequest) {
   try {
+    // 認証チェック（セッションからユーザーIDを取得）
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // セッションからユーザーIDを取得（クライアント送信値を信頼しない）
+    const userId = user.id
+
     const formData = await request.formData()
     const file = formData.get('file') as File | null
-    const userId = formData.get('userId') as string | null
     const generateThumbs = formData.get('thumbnails') === 'true'
     const format = (formData.get('format') as 'webp' | 'jpeg' | 'png') || 'webp'
     const quality = parseInt(formData.get('quality') as string) || 85
@@ -24,10 +32,6 @@ export async function POST(request: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    }
-
-    if (!userId) {
-      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
     const arrayBuffer = await file.arrayBuffer()

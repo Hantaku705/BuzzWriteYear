@@ -4,11 +4,38 @@
 
 ---
 
+## ミッション
+
+**ユーザーが18時間使い続けたくなるアプリを作る**
+
+最高のUI/UXを通じて、動画生成・投稿・分析のワークフローを中毒的に楽しくする。
+結果としてGMVが最大化される。
+
+---
+
+## 意思決定原則
+
+迷った時は以下の優先順位で判断する：
+
+1. **UX中毒性** - ユーザーがもっと使いたくなるか？
+2. **操作の快感** - クリック・操作が気持ち良いか？
+3. **フィードバック** - 結果が即座に分かるか？
+4. **シンプルさ** - 迷わず直感的に使えるか？
+
+### 判断例
+
+| 迷い | 判断 |
+|------|------|
+| 機能追加 vs UX改善 | → UX改善（中毒性優先） |
+| 詳細設定 vs ワンクリック | → ワンクリック（操作の快感） |
+| 正確さ vs 速度 | → 速度（即座のフィードバック） |
+| 高機能 vs シンプル | → シンプル（直感的操作） |
+
+---
+
 ## プロジェクト概要
 
-**TikTok Shop GMV最大化**のための動画自動生成・投稿・分析プラットフォーム
-
-- 商品訴求動画を大量生成（Remotion + HeyGen + FFmpeg）
+- 商品訴求動画を大量生成（Remotion + Kling AI + HeyGen + FFmpeg）
 - UGC風コンテンツで自然な訴求
 - 投稿→分析→最適化のPDCAサイクル
 
@@ -243,7 +270,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 | スキル | 説明 |
 |--------|------|
-| `/reco` | 並列分析から最適タスクを自動実行（5 subagent並列） |
+| `/reco` | 9 subagent並列分析・全自動修正（セキュリティ/パフォーマンス/UX/機能完成度） |
 | `/verify-worker-deployment` | ワーカーデプロイ検証（ローカル〜本番） |
 | `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
 | `/deploy-verify` | Vercel+Render統合デプロイ検証 |
@@ -259,6 +286,10 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `video-pipeline-analyzer` | 動画パイプライン分析・最適化 |
 | `build-validator` | ビルド・型・リント・テスト検証 |
 | `code-architect` | 設計レビュー・アーキテクチャ分析 |
+| `ux-analyzer` | UI/UX問題検出・自動修正（/reco用） |
+| `security-checker` | セキュリティ脆弱性検出・自動修正（/reco用） |
+| `performance-profiler` | N+1クエリ・パフォーマンス最適化（/reco用） |
+| `feature-completeness-checker` | TODO・未実装機能検出・自動修正（/reco用） |
 
 ---
 
