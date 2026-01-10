@@ -48,9 +48,10 @@
 - [x] **Upstash Redis設定（BullMQキュー有効化）**
 - [x] **Kling API修正（PiAPI正しい形式に対応）**
 - [x] **ワーカースクリプト作成（scripts/start-worker.ts）**
+- [x] **Render本番ワーカーデプロイ（kling-worker）**
 
 ### 作業中のタスク
-- [ ] **Railway本番ワーカーデプロイ（トラブルシューティング中）**
+- なし
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -61,19 +62,9 @@
 - [x] **Playwright E2Eテスト（9/9 Pass）**
 - [x] **Upstash Redis設定（REDIS_URL）**
 - [x] **DBマイグレーション実行完了（progress, progress_messageカラム）**
+- [x] **Render本番ワーカーデプロイ完了（kling-worker）**
 
 ## 次のアクション
-
-### 優先度1: Railway本番ワーカーデプロイ完了
-- Railwayプロジェクト作成済み: `buzzwriteyear-worker`
-- 環境変数設定済み（REDIS_URL, SUPABASE, KLING_API_KEY）
-- 問題: railway.tomlの`startCommand`が認識されず、`npm start`（Next.js）が起動してしまう
-- 確認URL: https://railway.com/project/33cb5490-c48e-4ae8-891e-2a8eb0c1e8fd
-
-**解決策候補**:
-1. Railwayダッシュボードから直接Start Commandを設定
-2. 別のサービスとしてワーカー専用リポジトリを作成
-3. Dockerfile使用
 
 ### ワーカー起動方法（ローカル）
 ```bash
@@ -98,38 +89,32 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 - http://localhost:3000/videos - 動画管理
 
 ## 未解決の問題
-- **Railway本番ワーカーデプロイ**: `railway.toml`の`startCommand`が認識されず、Next.jsが起動してしまう。ダッシュボードから手動設定するか、Dockerfile使用が必要。
+- なし
 
 ## 未コミット変更
 ```
- M CLAUDE.md
- M package-lock.json
- M package.json
- M railway.toml
+M HANDOFF.md
 ```
 
 ## 最新コミット
 ```
-4f39673 docs: セッション11記録・Railwayワーカー設定追加
+f0e8520 feat: A/Bテスト用バリアント一括生成機能
 ```
 
 ## セッション履歴
 
 ### 2026-01-11（セッション12）
-- **Railway本番ワーカーデプロイ開始**
-  - Railway CLIインストール・ログイン
-  - プロジェクト作成: `buzzwriteyear-worker`
-  - サービス作成: `kling-worker`
+- **本番ワーカーデプロイ完了（Render）**
+  - Railway試行 → startCommandが認識されず断念
+  - Renderに切り替え、Background Workerとしてデプロイ成功
+  - `render.yaml` 作成（kling-worker サービス定義）
   - 環境変数設定（REDIS_URL, SUPABASE, KLING_API_KEY）
 - **ワーカー設定ファイル作成**
-  - `railway.toml` - 起動コマンド設定
   - package.json更新 - `worker`, `worker:prod`スクリプト追加
   - tsx, typescriptをdependenciesに移動（本番ビルド用）
   - dotenvパッケージ追加
-- **問題発生**: railway.tomlのstartCommandが認識されず
-  - Next.js（`npm start`）が起動してしまう
-  - 複数回再デプロイを試みるも失敗
-  - ダッシュボードからの手動設定またはDockerfile使用が必要
+- **本番環境で動画生成が可能に**
+  - https://buzzwriteyear.vercel.app からKling AI動画生成が動作
 
 ### 2026-01-11（セッション11）
 - **FFmpeg・ImageMagick拡張方向性の調査・提案**
