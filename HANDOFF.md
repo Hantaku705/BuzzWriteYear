@@ -67,6 +67,10 @@
   - /api/videos/pipeline: 認証チェック追加・ユーザー所有確認
   - /api/videos/variants: POST/GET両方に認証チェック追加
   - /api/images/optimize: セッションからuserId取得に変更
+- [x] **追加セキュリティ修正（HIGH/MEDIUM 3件）**
+  - /api/auth/logout: 認証チェック追加（CSRF対策）
+  - /api/images/optimize: パラメータ検証（quality 1-100, maxWidth 100-4000, 10MB制限）
+  - /api/videos/generate: inputPropsを許可リスト方式スキーマに変更
 
 ### 作業中のタスク
 - なし
@@ -112,14 +116,33 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 ## 未コミット変更
 ```
  M HANDOFF.md
+ M src/components/ui/button.tsx (微修正)
 ```
 
 ## 最新コミット
 ```
-eaea6c5 fix(security): add auth checks to video/image API endpoints
+09e3965 fix(security): add auth checks and input validation
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション18）
+- **/reco 9 subagent 並列分析実行**
+  - build-checker: success
+  - security-checker: HIGH 3件検出（logout, images/optimize, videos/generate）
+  - performance-profiler: N+1クエリ4件（analytics.ts: 21→2クエリ等）
+  - ux-analyzer: 問題19件（HIGH 8 / MEDIUM 8 / LOW 3）
+  - feature-completeness: TODO 5件（ワーカーDB更新未実装）
+  - tools-analyzer: /variant-manager, /deploy-checklist スキル提案
+- **セキュリティ修正（HIGH/MEDIUM 3件）**
+  - `/api/auth/logout`: 認証チェック追加（CSRF対策）
+  - `/api/images/optimize`: パラメータ検証（quality 1-100, maxWidth 100-4000, ファイルサイズ10MB制限）
+  - `/api/videos/generate`: inputPropsをz.unknown()から許可リスト方式スキーマに変更
+- **コミット完了**: `09e3965 fix(security): add auth checks and input validation`
+- **次のタスク候補**（/reco分析より）:
+  - Performance: N+1クエリ修正（analytics.ts, stats.ts）
+  - UX: HIGH問題8件修正（エラーハンドリング、非機能ボタン）
+  - Feature: ワーカーDB更新TODO実装（5箇所）
 
 ### 2026-01-11（セッション17）
 - **/reco スキル v2 拡張（9 subagent・全自動修正対応）**
