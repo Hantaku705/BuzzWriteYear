@@ -10,11 +10,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Play,
   Upload,
   Loader2,
   Video,
-  Pencil,
   Trash2,
   ExternalLink,
 } from 'lucide-react'
@@ -31,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { useVideo, useDeleteVideo } from '@/hooks/useVideos'
 import { RemotionPreview } from '@/components/video/RemotionPreview'
+import { VideoDownloadButton } from '@/components/video/VideoDownloadButton'
 import type { CompositionId } from '@/hooks/useGenerateVideo'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -145,6 +144,15 @@ export default function VideoDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
+          {compositionId && inputProps && (
+            <VideoDownloadButton
+              videoId={id}
+              videoUrl={video.remote_url}
+              compositionId={compositionId}
+              inputProps={inputProps}
+              className="border-zinc-700"
+            />
+          )}
           {video.tiktok_video_id && (
             <Button variant="outline" className="border-zinc-700">
               <ExternalLink className="mr-2 h-4 w-4" />
