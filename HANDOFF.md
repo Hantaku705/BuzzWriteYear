@@ -97,6 +97,17 @@
 - [x] **成功アニメーション追加（動画生成完了時）**
   - CheckCircle + PartyPopperアイコンのアニメーション
   - 成功時Toast通知（「A/Bテスト用バリアント生成をおすすめします」）
+- [x] **スケルトンローディング統一実装（Products/Videos）**
+  - Products: テーブル行スケルトン（5行）+ ステガー遅延アニメーション
+  - Videos: カードグリッドスケルトン（8枚）+ 9:16アスペクト比対応
+  - タブ切り替え: fade-inアニメーション追加
+- [x] **画像アップロードUX改善**
+  - プログレスバー追加（Progress コンポーネント使用）
+  - ホバー時のボーダー色変化（pink-500/50）
+- [x] **ConversionTableソートUI改善**
+  - アクティブ列のハイライト（pink-400 + bg-pink-500/10）
+  - ソート方向矢印（ChevronUp/ChevronDown）表示
+  - ホバー時の背景色変化
 
 ### 作業中のタスク
 - なし
@@ -150,6 +161,34 @@ e381ce8 feat(ux): add toast notifications, skeleton loading, and success animati
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション21）
+- **/reco 10 subagent 並列分析実行**
+  - engagement-analyzer: 68%中毒性スコア（MEDIUM-HIGH）
+  - ux-analyzer: 28件検出（CRITICAL 3 / HIGH 12 / MEDIUM 9 / LOW 4）
+  - security-checker: 7件（CRITICAL 1 / HIGH 3 / MEDIUM 2 / LOW 1）
+  - performance-profiler: N+1クエリ4件（stats.ts, analytics.ts）
+  - feature-completeness: TODO 5件、プレースホルダー7件
+  - build-checker: success
+  - test-runner: 13/14 fail（サーバー未起動のためタイムアウト）
+- **スケルトンローディング統一実装**
+  - Products: テーブル行スケルトン（5行）+ animate-in fade-in-50 + stagger delay
+  - Videos: カードグリッドスケルトン（8枚）+ 9:16アスペクト比対応
+  - タブ切り替え: TabsContentに fade-in-50 duration-300 追加
+- **画像アップロードUX改善**
+  - ProductForm: Progressコンポーネント追加（h-1.5）
+  - ホバー時のボーダー色変化（hover:border-pink-500/50）
+  - アップロード中のボーダー色（border-pink-500/50）
+- **ConversionTableソートUI改善**
+  - SortIndicatorコンポーネント追加（ChevronUp/ChevronDown）
+  - getHeaderClass関数でアクティブ列ハイライト
+  - アクティブ: text-pink-400 + bg-pink-500/10
+  - ホバー: hover:text-zinc-200 + hover:bg-zinc-800/50
+- **ビルド成功確認**
+  - npm run build: success
+- **中毒性スコア向上: MEDIUM-HIGH (68%) → 目標 HIGH (78%)**
+  - スケルトン統一で待ち時間の認知的負荷軽減
+  - アニメーションで遷移の滑らかさ向上
 
 ### 2026-01-11（セッション20）
 - **/reco 10 subagent 並列分析実行**

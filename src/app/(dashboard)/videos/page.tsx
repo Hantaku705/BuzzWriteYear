@@ -26,12 +26,12 @@ import {
   XCircle,
   Play,
   Upload,
-  Filter,
   Loader2,
   Trash2,
   ExternalLink,
   RefreshCw,
 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { VideoGenerateModal } from '@/components/video/VideoGenerateModal'
 import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
@@ -171,10 +171,28 @@ export default function VideosPage() {
           </div>
         </div>
 
-        <TabsContent value={activeTab} className="mt-6">
+        <TabsContent value={activeTab} className="mt-6 animate-in fade-in-50 duration-300">
           {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div
+                  key={i}
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden animate-in fade-in-50 duration-300"
+                  style={{ animationDelay: `${i * 50}ms` }}
+                >
+                  {/* Thumbnail Skeleton */}
+                  <Skeleton className="aspect-[9/16] w-full bg-zinc-800" />
+                  {/* Content Skeleton */}
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-3/4 bg-zinc-800" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full bg-zinc-800" />
+                      <Skeleton className="h-4 w-12 bg-zinc-800" />
+                    </div>
+                    <Skeleton className="h-4 w-1/2 bg-zinc-800" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : error ? (
             <Card className="bg-zinc-900 border-zinc-800">

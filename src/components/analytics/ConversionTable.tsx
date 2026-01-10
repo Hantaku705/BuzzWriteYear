@@ -7,10 +7,10 @@ import {
   Minus,
   Eye,
   Heart,
-  MessageCircle,
-  Share2,
   ShoppingCart,
   DollarSign,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 
 interface VideoPerformance {
@@ -68,6 +68,25 @@ export function ConversionTable({
   const formatCurrency = (num: number) => `¥${num.toLocaleString()}`
   const formatPercent = (num: number) => `${(num * 100).toFixed(2)}%`
 
+  // Sort indicator component
+  const SortIndicator = ({ field }: { field: keyof VideoPerformance }) => {
+    if (sortBy !== field) return null
+    return sortOrder === 'asc' ? (
+      <ChevronUp className="h-3 w-3 text-pink-500" />
+    ) : (
+      <ChevronDown className="h-3 w-3 text-pink-500" />
+    )
+  }
+
+  // Get header class based on sort state
+  const getHeaderClass = (field: keyof VideoPerformance) => {
+    const baseClass = "text-right py-3 px-2 font-medium cursor-pointer transition-colors"
+    if (sortBy === field) {
+      return `${baseClass} text-pink-400 bg-pink-500/10`
+    }
+    return `${baseClass} text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50`
+  }
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -80,52 +99,62 @@ export function ConversionTable({
               テンプレート
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('views')}
               onClick={() => onSort?.('views')}
             >
               <div className="flex items-center justify-end gap-1">
                 <Eye className="h-3 w-3" />
                 視聴
+                <SortIndicator field="views" />
               </div>
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('likes')}
               onClick={() => onSort?.('likes')}
             >
               <div className="flex items-center justify-end gap-1">
                 <Heart className="h-3 w-3" />
                 いいね
+                <SortIndicator field="likes" />
               </div>
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('clicks')}
               onClick={() => onSort?.('clicks')}
             >
               <div className="flex items-center justify-end gap-1">
                 <ShoppingCart className="h-3 w-3" />
                 クリック
+                <SortIndicator field="clicks" />
               </div>
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('orders')}
               onClick={() => onSort?.('orders')}
             >
-              注文
+              <div className="flex items-center justify-end gap-1">
+                注文
+                <SortIndicator field="orders" />
+              </div>
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('gmv')}
               onClick={() => onSort?.('gmv')}
             >
               <div className="flex items-center justify-end gap-1">
                 <DollarSign className="h-3 w-3" />
                 GMV
+                <SortIndicator field="gmv" />
               </div>
             </th>
             <th
-              className="text-right py-3 px-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-200"
+              className={getHeaderClass('conversionRate')}
               onClick={() => onSort?.('conversionRate')}
             >
-              CVR
+              <div className="flex items-center justify-end gap-1">
+                CVR
+                <SortIndicator field="conversionRate" />
+              </div>
             </th>
             <th className="text-center py-3 px-2 font-medium text-zinc-400">
               傾向

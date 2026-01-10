@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Upload, X, Plus, Loader2, Link, Sparkles, CheckCircle } from 'lucide-react'
+import { Upload, X, Plus, Loader2, Link, Sparkles } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
 import { useCreateProduct, useUpdateProduct } from '@/hooks/useProducts'
 import { useOptimizedUpload } from '@/hooks/useOptimizedUpload'
 import { useScrape } from '@/hooks/useScrape'
@@ -314,15 +315,16 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
               </Button>
             </div>
           ))}
-          <label className={`aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 hover:border-pink-500/50 transition-all ${uploading ? 'border-pink-500/50 cursor-not-allowed' : ''}`}>
             {uploading ? (
-              <div className="flex flex-col items-center">
-                <Loader2 className="h-6 w-6 text-pink-500 animate-spin" />
-                <span className="text-xs text-pink-500 mt-1">{uploadProgress}%</span>
+              <div className="flex flex-col items-center w-full px-4">
+                <Loader2 className="h-6 w-6 text-pink-500 animate-spin mb-2" />
+                <Progress value={uploadProgress} className="h-1.5 w-full bg-zinc-700" />
+                <span className="text-xs text-pink-500 mt-2 font-medium">{uploadProgress}%</span>
               </div>
             ) : (
               <>
-                <Upload className="h-6 w-6 text-zinc-500 mb-2" />
+                <Upload className="h-6 w-6 text-zinc-500 mb-2 transition-transform group-hover:scale-110" />
                 <span className="text-xs text-zinc-500">アップロード</span>
               </>
             )}

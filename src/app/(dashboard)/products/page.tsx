@@ -30,7 +30,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Search, Package, Pencil, Trash2, Loader2, RefreshCw } from 'lucide-react'
+import { Plus, Search, Package, Pencil, Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,8 +172,37 @@ export default function ProductsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+            <div className="space-y-4">
+              {/* Table Header Skeleton */}
+              <div className="flex items-center gap-4 py-3 border-b border-zinc-800">
+                <Skeleton className="h-4 w-24 bg-zinc-800" />
+                <Skeleton className="h-4 w-16 bg-zinc-800" />
+                <Skeleton className="h-4 w-20 bg-zinc-800" />
+                <Skeleton className="h-4 w-20 bg-zinc-800" />
+                <Skeleton className="h-4 w-16 bg-zinc-800" />
+              </div>
+              {/* Table Row Skeletons */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 py-3 animate-in fade-in-50 duration-300" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div className="flex items-center gap-3 flex-1">
+                    <Skeleton className="h-10 w-10 rounded bg-zinc-800" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32 bg-zinc-800" />
+                      <Skeleton className="h-3 w-48 bg-zinc-800" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-20 bg-zinc-800" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-5 w-16 rounded-full bg-zinc-800" />
+                    <Skeleton className="h-5 w-16 rounded-full bg-zinc-800" />
+                  </div>
+                  <Skeleton className="h-4 w-24 bg-zinc-800" />
+                  <div className="flex gap-1">
+                    <Skeleton className="h-8 w-8 rounded bg-zinc-800" />
+                    <Skeleton className="h-8 w-8 rounded bg-zinc-800" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
