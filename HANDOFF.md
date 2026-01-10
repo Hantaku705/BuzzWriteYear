@@ -50,6 +50,12 @@
 - [x] **ワーカースクリプト作成（scripts/start-worker.ts）**
 - [x] **Render本番ワーカーデプロイ（kling-worker）**
 - [x] **バリアント一括生成機能（A/Bテスト用）**
+- [x] **バリアント生成UIモーダル・ワーカー追加**
+- [x] **/reco スキル作成（並列分析・自動タスク実行）**
+- [x] **/reco 拡張（tools-analyzer追加、skill/subagent自動管理）**
+- [x] **/verify-worker-deployment スキル作成**
+- [x] **/validate-api-integration スキル作成**
+- [x] **video-pipeline-analyzer Subagent作成**
 
 ### 作業中のタスク
 - なし
@@ -94,17 +100,35 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
- M scripts/start-worker.ts
- M src/app/(dashboard)/videos/[id]/page.tsx
-?? src/components/video/VariantGenerateModal.tsx
+ M tests/screenshots/kling-mode-selection.png
 ```
 
 ## 最新コミット
 ```
-0d19dac docs: HANDOFF.md・CLAUDE.md更新（Render本番ワーカー情報）
+d9c0165 feat: バリアント生成UIモーダル・ワーカー追加
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション14）
+- **/reco スキル作成（並列分析・自動タスク実行）**
+  - 5つのsubagentを並列実行:
+    - code-analyzer: git変更分析
+    - build-checker: ビルド検証
+    - state-analyzer: HANDOFF/CLAUDE分析
+    - test-runner: テスト実行
+    - tools-analyzer: skill/subagent分析
+  - 優先順位に従ってタスク自動判定・実行
+  - `~/.claude/commands/reco.md` に配置
+- **/reco 拡張（tools-analyzer追加）**
+  - 既存skill/subagentを分析し、改善点や新規作成の必要性を判定
+  - 繰り返しパターン検出 → 新規skill提案
+  - skill/subagent作成・更新ガイドラインを追加
+- **高優先度Skill/Subagent 3件作成**
+  - `/verify-worker-deployment`: ワーカーデプロイ検証（ローカル〜本番）
+  - `/validate-api-integration`: API統合検証（Kling, TikTok, HeyGen等）
+  - `video-pipeline-analyzer`: 動画パイプライン分析Subagent
+- **バリアント生成UIモーダル・ワーカーのコミット完了**
 
 ### 2026-01-11（セッション13）
 - **バリアント一括生成機能を実装**

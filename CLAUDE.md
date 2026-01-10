@@ -239,6 +239,27 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ---
 
+## Claude Code スキル（ユーザーレベル）
+
+| スキル | 説明 |
+|--------|------|
+| `/reco` | 並列分析から最適タスクを自動実行（5 subagent並列） |
+| `/verify-worker-deployment` | ワーカーデプロイ検証（ローカル〜本番） |
+| `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
+| `/handoff` | セッション終了時の書き出し |
+| `/resume` | セッション再開時の読み込み |
+| `/quick-commit` | 高速コミット |
+
+## Claude Code Subagent（ユーザーレベル）
+
+| Subagent | 説明 |
+|----------|------|
+| `video-pipeline-analyzer` | 動画パイプライン分析・最適化 |
+| `build-validator` | ビルド・型・リント・テスト検証 |
+| `code-architect` | 設計レビュー・アーキテクチャ分析 |
+
+---
+
 ## 解決済みの課題
 
 | 問題 | 解決方法 |
