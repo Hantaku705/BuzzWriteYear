@@ -52,9 +52,15 @@ CREATE TABLE IF NOT EXISTS videos (
   local_path TEXT,
   remote_url TEXT,
   duration_seconds INTEGER,
+  progress INTEGER DEFAULT 0,
+  progress_message TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   posted_at TIMESTAMPTZ
 );
+
+-- 進捗カラムが存在しない場合に追加（既存DBへの対応）
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS progress_message TEXT;
 
 -- 分析データ (時系列)
 CREATE TABLE IF NOT EXISTS video_analytics (

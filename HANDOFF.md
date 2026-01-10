@@ -44,9 +44,10 @@
 - [x] **Kling AI動画生成機能**
 - [x] **Kling AI E2Eテスト（全5テスト合格）**
 - [x] **商品URL自動入力機能（スクレイピング + LLM分析）**
+- [x] **動画生成進捗表示・キャンセル機能**
 
 ### 作業中のタスク
-- なし
+- [ ] DBマイグレーション実行（progress, progress_messageカラム追加）
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -76,15 +77,49 @@
 
 ## 未コミット変更
 ```
+ M package-lock.json
+ M package.json
+ M src/components/video/VideoGenerateModal.tsx
+ M src/types/database.ts
+ M src/workers/kling.worker.ts
+ M supabase/combined_migration.sql
+?? src/app/api/videos/[id]/
+?? src/components/ui/progress.tsx
+?? src/hooks/useVideoStatus.ts
+?? supabase/migrations/003_add_video_progress.sql
 ?? tests/screenshots/kling-test-video.mp4
 ```
 
 ## 最新コミット
 ```
-cbec333 feat: 商品URL自動入力機能を実装
+c12f41a docs: HANDOFF.md・CLAUDE.md更新（セッション8）
 ```
 
 ## セッション履歴
+
+### 2026-01-10（セッション9）
+- **動画生成進捗表示・キャンセル機能を実装**
+  - DBスキーマ拡張（progress, progress_messageカラム）
+  - 型定義更新（database.ts - VideoStatusに'cancelled'追加）
+  - 進捗取得API（/api/videos/[id]/status）
+  - キャンセルAPI（/api/videos/[id]/cancel）
+  - ワーカー進捗更新（kling.worker.ts）
+    - 進捗をDBに保存（10-85%範囲でマッピング）
+    - キャンセルチェック機能
+    - 進捗ステージ別メッセージ
+  - 進捗ポーリングフック（useVideoStatus.ts）
+    - TanStack Queryでポーリング
+    - キャンセル用mutation
+  - 進捗表示UI（VideoGenerateModal.tsx）
+    - プログレスバー（0-100%）
+    - ステータスメッセージ
+    - 経過時間表示
+    - キャンセルボタン
+    - 完了/失敗時のアイコン表示
+    - 3秒後自動クローズ
+  - shadcn/ui Progressコンポーネント追加
+  - Vercelデプロイ完了
+- **未実行**: Supabase DBマイグレーション（progress, progress_messageカラム追加）
 
 ### 2026-01-10（セッション8）
 - **商品URL自動入力機能を実装**

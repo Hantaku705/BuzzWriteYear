@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
-import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle } from 'lucide-react'
 import { RemotionPreview } from './RemotionPreview'
 import { useProducts } from '@/hooks/useProducts'
 import {
@@ -31,6 +32,7 @@ import {
   FeatureListProps,
 } from '@/hooks/useGenerateVideo'
 import { useKlingGenerate } from '@/hooks/useKlingGenerate'
+import { useVideoStatus, useCancelVideo } from '@/hooks/useVideoStatus'
 import { KLING_PRESETS, type PromptPreset } from '@/lib/video/kling/prompts'
 
 interface VideoGenerateModalProps {
@@ -39,7 +41,7 @@ interface VideoGenerateModalProps {
 }
 
 type GenerationMode = 'remotion' | 'kling'
-type Step = 'mode' | 'template' | 'product' | 'params' | 'preview'
+type Step = 'mode' | 'template' | 'product' | 'params' | 'preview' | 'generating'
 
 interface TemplateOption {
   id: CompositionId
@@ -105,9 +107,45 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
   const [customPrompt, setCustomPrompt] = useState('')
   const [klingDuration, setKlingDuration] = useState<5 | 10>(5)
 
+  // 生成中State
+  const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null)
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
+
   const { data: products = [] } = useProducts()
   const generateVideo = useGenerateVideo()
   const generateKling = useKlingGenerate()
+  const cancelVideo = useCancelVideo()
+  const { data: videoStatus } = useVideoStatus(generatingVideoId, {
+    enabled: !!generatingVideoId && step === 'generating',
+    pollInterval: 2000,
+  })
+
+  // 経過時間の更新
+  useEffect(() => {
+    if (step !== 'generating' || !startTime) return
+
+    const interval = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - startTime) / 1000))
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [step, startTime])
+
+  // 生成完了/失敗時の処理
+  useEffect(() => {
+    if (!videoStatus) return
+
+    if (videoStatus.status === 'ready' || videoStatus.status === 'failed' || videoStatus.status === 'cancelled') {
+      // 3秒後にモーダルを閉じる（完了表示を見せるため）
+      const timeout = setTimeout(() => {
+        resetForm()
+        onOpenChange(false)
+      }, 3000)
+
+      return () => clearTimeout(timeout)
+    }
+  }, [videoStatus, onOpenChange])
 
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId),
@@ -248,19 +286,44 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
 
     const videoTitle = title || `${selectedProduct?.name} - AI生成（${selectedPreset.labelJa}）`
 
-    await generateKling.mutateAsync({
-      productId: selectedProductId,
-      mode: 'image-to-video',
-      imageUrl: selectedProduct?.images[0],
-      prompt: klingPrompt,
-      negativePrompt: selectedPreset.negativePrompt,
-      duration: klingDuration,
-      presetId: selectedPreset.id,
-      title: videoTitle,
-    })
+    try {
+      const result = await generateKling.mutateAsync({
+        productId: selectedProductId,
+        mode: 'image-to-video',
+        imageUrl: selectedProduct?.images[0],
+        prompt: klingPrompt,
+        negativePrompt: selectedPreset.negativePrompt,
+        duration: klingDuration,
+        presetId: selectedPreset.id,
+        title: videoTitle,
+      })
 
-    resetForm()
-    onOpenChange(false)
+      // 生成画面に遷移
+      if (result?.video?.id) {
+        setGeneratingVideoId(result.video.id)
+        setStartTime(Date.now())
+        setElapsedTime(0)
+        setStep('generating')
+      }
+    } catch {
+      // エラーはuseKlingGenerateで処理される
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!generatingVideoId) return
+
+    try {
+      await cancelVideo.mutateAsync(generatingVideoId)
+    } catch {
+      // エラーは無視（既に完了している可能性など）
+    }
+  }
+
+  const formatElapsedTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}分${secs.toString().padStart(2, '0')}秒`
   }
 
   const resetForm = () => {
@@ -285,6 +348,10 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
     setSelectedPreset(KLING_PRESETS[0])
     setCustomPrompt('')
     setKlingDuration(5)
+    // 生成中State
+    setGeneratingVideoId(null)
+    setStartTime(null)
+    setElapsedTime(0)
   }
 
   const canProceed = () => {
@@ -301,6 +368,10 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
   }
 
   const getSteps = (): Step[] => {
+    if (step === 'generating') {
+      // 生成中は進捗表示のみ
+      return ['generating']
+    }
     if (generationMode === 'remotion') {
       return ['mode', 'template', 'product', 'params', 'preview']
     } else if (generationMode === 'kling') {
@@ -323,6 +394,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
         </DialogHeader>
 
         {/* Step indicator */}
+        {step !== 'generating' && (
         <div className="flex items-center justify-center gap-2 py-4">
           {steps.map((s, i) => (
             <div key={s} className="flex items-center">
@@ -349,6 +421,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
             </div>
           ))}
         </div>
+        )}
 
         {/* Step 0: Mode Selection */}
         {step === 'mode' && (
@@ -752,7 +825,115 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
           </div>
         )}
 
+        {/* Step: Generating (Kling AI) */}
+        {step === 'generating' && (
+          <div className="space-y-6 py-4">
+            {/* ステータスアイコン */}
+            <div className="flex justify-center">
+              {videoStatus?.status === 'ready' ? (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-500/20">
+                  <CheckCircle className="h-10 w-10 text-green-500" />
+                </div>
+              ) : videoStatus?.status === 'failed' ? (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/20">
+                  <XCircle className="h-10 w-10 text-red-500" />
+                </div>
+              ) : videoStatus?.status === 'cancelled' ? (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-zinc-500/20">
+                  <X className="h-10 w-10 text-zinc-400" />
+                </div>
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                  <Wand2 className="h-10 w-10 text-pink-500 animate-pulse" />
+                </div>
+              )}
+            </div>
+
+            {/* ステータスメッセージ */}
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white">
+                {videoStatus?.status === 'ready'
+                  ? '生成完了!'
+                  : videoStatus?.status === 'failed'
+                  ? '生成に失敗しました'
+                  : videoStatus?.status === 'cancelled'
+                  ? 'キャンセルしました'
+                  : 'AI動画を生成中...'}
+              </h3>
+              <p className="text-sm text-zinc-400 mt-1">
+                {videoStatus?.message || '処理を開始しています...'}
+              </p>
+            </div>
+
+            {/* プログレスバー */}
+            {videoStatus?.status === 'generating' && (
+              <div className="space-y-2">
+                <Progress
+                  value={videoStatus?.progress || 0}
+                  className="h-3 bg-zinc-800"
+                />
+                <div className="flex justify-between text-sm">
+                  <span className="text-zinc-500">進捗</span>
+                  <span className="text-pink-400 font-medium">
+                    {videoStatus?.progress || 0}%
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 経過時間 */}
+            <div className="text-center">
+              <span className="text-sm text-zinc-500">
+                経過時間: {formatElapsedTime(elapsedTime)}
+              </span>
+            </div>
+
+            {/* 完了メッセージ */}
+            {videoStatus?.status === 'ready' && (
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-center">
+                <p className="text-sm text-green-200">
+                  動画一覧で確認できます。3秒後に自動で閉じます...
+                </p>
+              </div>
+            )}
+
+            {/* 失敗メッセージ */}
+            {videoStatus?.status === 'failed' && (
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
+                <p className="text-sm text-red-200">
+                  再度お試しください。3秒後に自動で閉じます...
+                </p>
+              </div>
+            )}
+
+            {/* キャンセルボタン */}
+            {videoStatus?.status === 'generating' && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={cancelVideo.isPending}
+                  className="border-zinc-600 text-zinc-400 hover:text-white hover:border-zinc-500"
+                >
+                  {cancelVideo.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      キャンセル中...
+                    </>
+                  ) : (
+                    <>
+                      <X className="mr-2 h-4 w-4" />
+                      キャンセル
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Navigation */}
+        {step !== 'generating' && (
         <div className="flex justify-between pt-4">
           <Button
             variant="outline"
@@ -808,6 +989,7 @@ export function VideoGenerateModal({ open, onOpenChange }: VideoGenerateModalPro
             </Button>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   )

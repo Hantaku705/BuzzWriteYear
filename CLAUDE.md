@@ -89,7 +89,7 @@ REDIS_URL=
 | `src/components/auth/` | 認証フォームコンポーネント |
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
 | `src/app/(dashboard)/videos/[id]/` | 動画詳細ページ |
-| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useGenerateVideo） |
+| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useGenerateVideo, useVideoStatus） |
 | `src/lib/api/` | API関数（products, videos, stats, analytics） |
 | `src/lib/query/` | TanStack Query設定 |
 | `src/lib/storage/` | Supabase Storage画像アップロード |
@@ -166,6 +166,8 @@ REDIS_URL=
 |----------------|----------|------|
 | `/api/videos/generate` | POST | 動画生成ジョブ作成 |
 | `/api/videos/kling` | POST | Kling AI動画生成 |
+| `/api/videos/[id]/status` | GET | 動画生成進捗取得 |
+| `/api/videos/[id]/cancel` | POST | 動画生成キャンセル |
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |

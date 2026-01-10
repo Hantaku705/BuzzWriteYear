@@ -65,6 +65,8 @@ export type Database = {
           remote_url: string | null
           duration_seconds: number | null
           input_props: Json | null
+          progress: number | null
+          progress_message: string | null
           created_at: string
           posted_at: string | null
         }
@@ -82,6 +84,8 @@ export type Database = {
           remote_url?: string | null
           duration_seconds?: number | null
           input_props?: Json | null
+          progress?: number | null
+          progress_message?: string | null
           created_at?: string
           posted_at?: string | null
         }
@@ -99,6 +103,8 @@ export type Database = {
           remote_url?: string | null
           duration_seconds?: number | null
           input_props?: Json | null
+          progress?: number | null
+          progress_message?: string | null
           created_at?: string
           posted_at?: string | null
         }
@@ -250,7 +256,7 @@ export type ContentType =
 export type GenerationMethod = 'remotion' | 'heygen' | 'ffmpeg'
 
 // Video status
-export type VideoStatus = 'draft' | 'generating' | 'ready' | 'posting' | 'posted' | 'failed'
+export type VideoStatus = 'draft' | 'generating' | 'ready' | 'posting' | 'posted' | 'failed' | 'cancelled'
 
 // Schedule status
 export type ScheduleStatus = 'pending' | 'processing' | 'completed' | 'failed'
