@@ -26,6 +26,7 @@
 | Storage | Supabase Storage |
 | Queue | BullMQ + Redis (Upstash) |
 | Video Gen | Remotion (60%) + HeyGen (20%) + FFmpeg (20%) |
+| Charts | Recharts |
 | Deploy | Vercel + Docker |
 
 ---
@@ -41,6 +42,9 @@ npm run dev
 
 # ビルド
 npm run build
+
+# Remotion Studio
+npm run remotion:studio
 ```
 
 ### 環境変数
@@ -51,6 +55,7 @@ npm run build
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
 HEYGEN_API_KEY=
@@ -64,11 +69,56 @@ REDIS_URL=
 | ファイル | 役割 |
 |----------|------|
 | `src/app/(dashboard)/` | ダッシュボードページ群 |
+| `src/app/api/videos/generate/` | 動画生成APIエンドポイント |
+| `src/app/api/tiktok/` | TikTok OAuth APIエンドポイント |
 | `src/components/layout/` | Sidebar, Header |
 | `src/components/product/` | 商品関連コンポーネント |
+| `src/components/video/` | 動画プレビュー（RemotionPreview） |
+| `src/components/analytics/` | 分析ダッシュボードコンポーネント |
 | `src/lib/supabase/` | Supabaseクライアント |
+| `src/lib/queue/` | BullMQキュークライアント |
+| `src/lib/tiktok/` | TikTok APIクライアント |
+| `src/lib/video/ffmpeg/` | FFmpeg UGC加工 |
+| `src/lib/video/heygen/` | HeyGen APIクライアント |
+| `src/remotion/` | Remotionテンプレート |
+| `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
 | `supabase/migrations/` | DBマイグレーション |
+
+---
+
+## Remotionテンプレート
+
+| テンプレート | 説明 | 時間 |
+|------------|------|------|
+| ProductIntro | 商品紹介動画 | 15秒 |
+| BeforeAfter | 使用前後比較 | 12秒 |
+| ReviewText | レビュー風テキストアニメーション | 10秒 |
+| FeatureList | 特徴リスト | 15秒 |
+
+---
+
+## UGCエフェクト（FFmpeg）
+
+| エフェクト | 説明 |
+|-----------|------|
+| camera_shake | 手ブレ効果 |
+| film_grain | フィルムグレイン |
+| vintage_filter | ヴィンテージ風 |
+| phone_quality | スマホ撮影風 |
+| selfie_mode | 自撮り風（左右反転） |
+
+---
+
+## BullMQキュー
+
+| キュー名 | 用途 |
+|----------|------|
+| video-generation | Remotion動画生成 |
+| ugc-processing | UGC風加工 |
+| heygen-generation | HeyGen動画生成 |
+| tiktok-posting | TikTok投稿 |
+| analytics-collection | 分析データ収集 |
 
 ---
 
@@ -81,6 +131,18 @@ REDIS_URL=
 | templates | テンプレート |
 | video_analytics | 分析データ（時系列） |
 | schedules | 投稿スケジュール |
+| oauth_states | TikTok OAuth状態管理 |
+| tiktok_accounts | TikTokアカウント情報 |
+
+---
+
+## API Routes
+
+| エンドポイント | メソッド | 説明 |
+|----------------|----------|------|
+| `/api/videos/generate` | POST | 動画生成ジョブ作成 |
+| `/api/tiktok/auth` | GET | TikTok OAuth開始 |
+| `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
 
 ---
 
@@ -97,10 +159,54 @@ REDIS_URL=
 ## 開発フェーズ
 
 - [x] Phase 1: 基盤構築（Next.js + Supabase + UI）
-- [ ] Phase 2: 動画生成機能（Remotion + BullMQ）
-- [ ] Phase 3: UGC風・HeyGen連携
-- [ ] Phase 4: TikTok連携
-- [ ] Phase 5: 分析・最適化
+- [x] Phase 2: 動画生成機能（Remotion + BullMQ）
+- [x] Phase 3: UGC風・HeyGen連携
+- [x] Phase 4: TikTok連携
+- [x] Phase 5: 分析・最適化
+
+---
+
+## 解決済みの課題
+
+| 問題 | 解決方法 |
+|------|----------|
+| Zod v4 `z.record()` | 2引数形式に変更 `z.record(z.string(), z.unknown())` |
+| Zod v4 `error.errors` | `error.issues` に変更 |
+| BullMQ + ioredis型衝突 | ioredis削除、ConnectionOptionsで直接指定 |
+| Supabase insert型エラー | `as never` 型アサーション使用 |
+| Recharts Tooltip formatter | `value as number` でキャスト |
+| Node.js fetch Buffer | `Blob` に変換して送信 |
+
+---
+
+## よくある間違いと修正
+
+### Zod v4 API変更
+
+```typescript
+// NG
+z.record(z.unknown())
+// OK
+z.record(z.string(), z.unknown())
+```
+
+### BullMQ接続
+
+```typescript
+// NG: ioredis直接使用
+import Redis from 'ioredis'
+const redis = new Redis(url)
+new Queue('name', { connection: redis })
+
+// OK: ConnectionOptions使用
+import { ConnectionOptions } from 'bullmq'
+const connection: ConnectionOptions = {
+  host: 'localhost',
+  port: 6379,
+  maxRetriesPerRequest: null,
+}
+new Queue('name', { connection })
+```
 
 ---
 
@@ -146,215 +252,8 @@ REDIS_URL=
 | `/memory delete` | 記憶を削除 |
 | `/update-brain` | この共通設定を更新 |
 
-### HANDOFF.md テンプレート
-
-```markdown
-# HANDOFF - セッション引き継ぎ
-
-## 現在の状態
-
-### 完了したタスク
-- [x] タスク1
-- [x] タスク2
-
-### 作業中のタスク
-- [ ] タスク3
-
-## 次のアクション
-1. 優先度高のアクション
-2. 次のアクション
-
-## 未解決の問題
-- 問題と原因、対応方針
-
-## 未コミット変更
-```
-git status --short の出力
-```
-
-## 最新コミット
-```
-git log -1 --oneline の出力
-```
-
-## セッション履歴
-
-### YYYY-MM-DD
-- 今回やったこと
-```
-
 ### 運用ルール
 
 - **HANDOFF.mdは追記型** - 既存の完了タスク・履歴を削除しない
 - **セッション履歴は新しい順** - 最新を先頭に追加
 - **永続的な知識はCLAUDE.mdへ** - プロジェクト固有設定に反映
-
----
-
-## 3. Skill定義テンプレート
-
-### 基本構造
-
-```markdown
----
-description: "[Skill名] - [1行説明]"
----
-
-[実行手順を番号付きで記載]
-
-1. ステップ1
-2. ステップ2
-...
-```
-
-### Git系スキル
-
-| スキル | 用途 |
-|--------|------|
-| `/commit-push-pr` | status確認→diff→add→commit→push→PR作成 |
-| `/quick-commit` | 高速コミット（conventional commits形式） |
-
-### 品質管理スキル
-
-| スキル | 用途 |
-|--------|------|
-| `/test-and-fix` | テスト実行→失敗分析→修正→再実行 |
-| `/review-changes` | 未コミット変更のレビュー |
-| `/first-principles` | 問題の根本分析 |
-
----
-
-## 4. Subagent定義テンプレート
-
-### 基本構造
-
-```markdown
----
-name: [agent-name]
-description: [用途説明]
-tools: [Read, Grep, Glob, Bash, ...]
-model: haiku | inherit
----
-
-# [Agent Name]
-
-あなたは[専門領域]のスペシャリストです。
-
-## 役割
-[具体的な責務]
-
-## 実行手順
-1. ...
-2. ...
-
-## 出力フォーマット
-[期待する出力形式]
-
-## 注意事項
-- ...
-```
-
-### 開発用Subagent
-
-| Agent | 用途 | ツール | モデル |
-|-------|------|--------|--------|
-| `build-validator` | ビルド・型・リント・テスト検証 | Bash | inherit |
-| `code-architect` | 設計レビュー・アーキテクチャ分析 | Read, Grep | inherit |
-| `code-simplifier` | コード簡潔化・リファクタリング | Read, Edit | inherit |
-
----
-
-## 5. Claude Code Web同期
-
-別PCやWeb版との作業引き継ぎが可能。
-
-### コマンド一覧
-
-| コマンド | 説明 |
-|----------|------|
-| `& メッセージ` | Web版で新規セッション作成（バックグラウンド） |
-| `claude --teleport` | Web版セッションをローカルに復帰 |
-| `claude --remote "タスク"` | CLIからWeb版セッション作成 |
-
-### 別PC引き継ぎ手順
-
-1. 元のPCで `& タスク内容` でWeb版セッション作成
-2. 新しいPCで同じリポジトリをチェックアウト
-3. `claude --teleport` でセッション選択・復帰
-
-### 要件
-
-- 同じClaude.aiアカウントで認証
-- 同じリポジトリがチェックアウト済み
-- Gitがクリーンな状態（未コミット変更なし）
-- GitHubリポジトリのみ対応
-
----
-
-## 6. プロジェクト連携
-
-### ディレクトリ優先順位
-
-```
-1. ~/.claude/CLAUDE.md        ← ユーザーレベル（この共通設定）
-2. プロジェクト/CLAUDE.md     ← プロジェクトレベル（固有設定）
-3. .claude/commands/          ← スキル定義
-4. .claude/agents/            ← Subagent定義
-```
-
-### 推奨構成
-
-```
-~/.claude/
-├── CLAUDE.md                 # 共通設定（このファイル）
-├── commands/                 # 共通スキル
-│   ├── handoff.md
-│   ├── resume.md
-│   ├── memory.md
-│   ├── update-brain.md       # この設定を更新
-│   ├── commit-push-pr.md
-│   ├── quick-commit.md
-│   ├── test-and-fix.md
-│   ├── review-changes.md
-│   └── first-principles.md
-└── agents/                   # 共通Subagent
-    ├── build-validator.md
-    ├── code-architect.md
-    └── code-simplifier.md
-
-プロジェクト/
-├── CLAUDE.md                 # プロジェクト固有設定
-├── HANDOFF.md                # セッション引き継ぎ
-└── .claude/
-    ├── commands/             # プロジェクト固有スキル
-    ├── agents/               # プロジェクト固有Subagent
-    └── memories/             # 記憶
-```
-
-### オーバーライドルール
-
-- プロジェクトCLAUDE.mdは共通設定を**拡張**（上書きではない）
-- 同名のスキル/Subagentはプロジェクト側が**優先**
-- セッション管理（HANDOFF.md, memories/）は**プロジェクト単位**で管理
-
----
-
-## 7. よくあるパターン
-
-### 新プロジェクト開始時
-
-1. プロジェクト/CLAUDE.md にプロジェクト固有の情報を記載
-2. 必要に応じて .claude/commands/, .claude/agents/ を追加
-3. `/resume` で前回の状態を確認（HANDOFF.mdがあれば）
-
-### セッション終了時
-
-1. `/handoff` でHANDOFF.mdに追記
-2. 永続的な知識はCLAUDE.mdに反映
-3. オプション：コミット＆プッシュ
-
-### 作業中の記録
-
-1. `/memory save` で細かい調査結果を保存
-2. `/memory recall [kw]` で過去の調査を呼び出し
-3. 重要な知見は `/handoff` でCLAUDE.mdに永続化
