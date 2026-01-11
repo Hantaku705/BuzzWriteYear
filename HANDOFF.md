@@ -122,6 +122,7 @@
   - `src/lib/video/kling/constants.ts` 新規作成（型定義・価格計算）
   - `src/lib/video/kling/client.ts` をサーバー専用に整理
 - [x] **本番デプロイ完了**
+- [x] **/confirm スキル作成（本番E2Eテスト）**
 
 ### 作業中のタスク
 - なし
@@ -166,15 +167,35 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-なし
+M CLAUDE.md
+M tests/e2e/app-verification.spec.ts
+M tests/screenshots/analytics-dashboard.png
+?? .claude/
 ```
 
 ## 最新コミット
 ```
-15aaddd feat(kling): implement O1 features for flexible video generation
+5be29f8 docs: mark O1 DB migration as completed
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション23）
+- **/confirm スキル作成**
+  - 本番環境のPlaywright E2Eテストを実行するスキル
+  - `.claude/commands/confirm.md` に配置
+  - 本番URL: `https://buzzwriteyear.vercel.app`
+  - プレビューURLはVercel認証がかかるため使用しない
+- **テストファイル修正**
+  - `tests/e2e/app-verification.spec.ts`: BASE_URLを環境変数対応に
+  - `process.env.BASE_URL || 'http://localhost:3000'`
+- **本番環境テスト実行・全9テスト合格**
+  - 本番デプロイ（`vercel --prod`）実行
+  - 全ページ読み込み確認
+  - ダークモード確認
+  - スクリーンショット取得
+- **CLAUDE.md更新**
+  - `/confirm` スキルを追加
 
 ### 2026-01-11（セッション22）
 - **Kling AI O1機能フル実装**

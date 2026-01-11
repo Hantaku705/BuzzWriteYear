@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
 
 test.describe('BuzzWriteYear App Verification', () => {
   test('Homepage loads correctly', async ({ page }) => {

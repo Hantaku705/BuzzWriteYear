@@ -291,6 +291,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
 | `/deploy-verify` | Vercel+Render統合デプロイ検証 |
 | `/test-and-fix` | テスト実行・失敗分析・自動修正 |
+| `/confirm` | 本番環境E2Eテスト（Playwright） |
 | `/handoff` | セッション終了時の書き出し |
 | `/resume` | セッション再開時の読み込み |
 | `/quick-commit` | 高速コミット |
