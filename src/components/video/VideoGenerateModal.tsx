@@ -1068,11 +1068,16 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
             {/* ステータスアイコン */}
             <div className="flex justify-center">
               {videoStatus?.status === 'ready' ? (
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 animate-pulse">
-                  <div className="relative">
-                    <CheckCircle className="h-12 w-12 text-green-400 animate-[bounce_0.5s_ease-in-out]" />
-                    <PartyPopper className="absolute -top-2 -right-2 h-6 w-6 text-yellow-400 animate-[spin_1s_ease-in-out]" />
-                  </div>
+                <div className="relative flex h-24 w-24 items-center justify-center">
+                  {/* 背景パルス */}
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/30 to-emerald-500/30 animate-ping" />
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20" />
+                  {/* メインアイコン */}
+                  <CheckCircle className="h-14 w-14 text-green-400 animate-scale-bounce" />
+                  {/* パーティーポッパー（複数） */}
+                  <PartyPopper className="absolute -top-3 -right-3 h-7 w-7 text-yellow-400 animate-float-up" />
+                  <PartyPopper className="absolute -top-2 -left-3 h-6 w-6 text-pink-400 animate-float-up [animation-delay:0.1s]" />
+                  <PartyPopper className="absolute -bottom-2 right-0 h-5 w-5 text-purple-400 animate-float-up [animation-delay:0.2s]" />
                 </div>
               ) : videoStatus?.status === 'failed' ? (
                 <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500/20">
@@ -1142,11 +1147,13 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
                   {/* バリアント生成（推奨） */}
                   <Button
                     onClick={handleCreateVariants}
-                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-14 text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-14 text-base shadow-lg shadow-pink-500/30 hover:shadow-pink-500/50 transition-all hover:scale-[1.03] active:scale-[0.98]"
                   >
                     <Layers className="mr-2 h-5 w-5" />
                     A/Bテスト用バリアントを生成
-                    <span className="ml-2 text-xs bg-white/20 px-2 py-0.5 rounded-full">おすすめ</span>
+                    <span className="ml-2 text-xs bg-gradient-to-r from-yellow-300 to-orange-300 text-zinc-900 font-bold px-2.5 py-0.5 rounded-full animate-pulse">
+                      おすすめ
+                    </span>
                   </Button>
 
                   <div className="grid grid-cols-2 gap-3">

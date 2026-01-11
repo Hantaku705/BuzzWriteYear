@@ -2,6 +2,7 @@
 
 import { Player } from '@remotion/player'
 import { useMemo, ComponentType } from 'react'
+import { AlertCircle } from 'lucide-react'
 import { ProductIntro } from '@/remotion/compositions/ProductIntro'
 import { BeforeAfter } from '@/remotion/compositions/BeforeAfter'
 import { ReviewText } from '@/remotion/compositions/ReviewText'
@@ -79,12 +80,20 @@ export function RemotionPreview({
           backgroundColor: '#27272a',
           borderRadius: 12,
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#71717a',
+          gap: 8,
+          padding: 16,
         }}
       >
-        Unknown composition
+        <AlertCircle style={{ width: 32, height: 32, color: '#ef4444' }} />
+        <p style={{ color: '#ef4444', fontSize: 14, fontWeight: 500 }}>
+          テンプレート読み込みエラー
+        </p>
+        <p style={{ color: '#71717a', fontSize: 12, textAlign: 'center' }}>
+          ID: <code style={{ backgroundColor: 'rgba(0,0,0,0.3)', padding: '2px 8px', borderRadius: 4 }}>{compositionId}</code>
+        </p>
       </div>
     )
   }

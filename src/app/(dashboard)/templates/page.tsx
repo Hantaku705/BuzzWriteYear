@@ -1,8 +1,17 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { RemotionPreview } from '@/components/video/RemotionPreview'
+import type { CompositionId } from '@/remotion/compositions'
 import {
   Video,
   Play,
@@ -76,7 +85,27 @@ const typeLabels: Record<string, string> = {
   ffmpeg: 'FFmpeg',
 }
 
+// テンプレートからRemotionのcompositionIdへのマッピング
+const compositionMapping: Record<string, CompositionId> = {
+  product_intro: 'ProductIntro',
+  before_after: 'BeforeAfter',
+  review: 'ReviewText',
+  feature_list: 'FeatureList',
+}
+
+// サンプル入力データ
+const sampleInputProps = {
+  title: 'サンプル商品',
+  imageUrl: 'https://via.placeholder.com/400x600/18181b/ffffff?text=Sample',
+  features: ['特徴1', '特徴2', '特徴3'],
+  description: 'これはサンプル商品の説明文です',
+  price: '¥1,980',
+  rating: 4.5,
+}
+
 export default function TemplatesPage() {
+  const [previewTemplate, setPreviewTemplate] = useState<typeof templates[0] | null>(null)
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -111,7 +140,11 @@ export default function TemplatesPage() {
                     <div className="aspect-video bg-zinc-800 rounded-t-lg flex items-center justify-center relative overflow-hidden">
                       <Video className="h-12 w-12 text-zinc-600" />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button size="sm" className="bg-pink-500 hover:bg-pink-600">
+                        <Button
+                          size="sm"
+                          className="bg-pink-500 hover:bg-pink-600"
+                          onClick={() => setPreviewTemplate(template)}
+                        >
                           <Play className="mr-2 h-4 w-4" />
                           プレビュー
                         </Button>
@@ -209,6 +242,33 @@ export default function TemplatesPage() {
           </Card>
         </div>
       </div>
+
+      {/* プレビューダイアログ */}
+      {previewTemplate && (
+        <Dialog open onOpenChange={() => setPreviewTemplate(null)}>
+          <DialogContent className="max-w-md bg-zinc-900 border-zinc-800">
+            <DialogHeader>
+              <DialogTitle className="text-white">{previewTemplate.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center">
+              {compositionMapping[previewTemplate.contentType] ? (
+                <RemotionPreview
+                  compositionId={compositionMapping[previewTemplate.contentType]}
+                  inputProps={sampleInputProps}
+                  width={270}
+                  height={480}
+                  autoPlay
+                  loop
+                />
+              ) : (
+                <div className="aspect-[9/16] w-[270px] bg-zinc-800 rounded-lg flex items-center justify-center">
+                  <p className="text-zinc-400 text-sm">プレビュー非対応</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

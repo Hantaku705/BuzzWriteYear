@@ -315,7 +315,7 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
               </Button>
             </div>
           ))}
-          <label className={`aspect-square rounded-lg border-2 border-dashed border-zinc-700 flex flex-col items-center justify-center cursor-pointer hover:border-zinc-600 hover:border-pink-500/50 transition-all ${uploading ? 'border-pink-500/50 cursor-not-allowed' : ''}`}>
+          <label className={`aspect-square rounded-lg border-2 border-dashed flex flex-col items-center justify-center transition-all ${uploading ? 'border-pink-500 bg-pink-500/10 cursor-not-allowed' : 'border-zinc-700 cursor-pointer hover:border-pink-500/50 hover:bg-zinc-800/50'}`}>
             {uploading ? (
               <div className="flex flex-col items-center w-full px-4">
                 <Loader2 className="h-6 w-6 text-pink-500 animate-spin mb-2" />

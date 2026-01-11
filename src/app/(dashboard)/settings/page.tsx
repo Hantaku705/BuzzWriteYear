@@ -18,6 +18,7 @@ import {
   Loader2,
   LogOut,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 
 export default function SettingsPage() {
@@ -51,6 +52,16 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     await signOut()
+  }
+
+  const handleConnect = (name: string) => {
+    if (name === 'TikTok') {
+      window.location.href = '/api/tiktok/auth'
+    } else if (name === 'HeyGen') {
+      toast.info('HeyGen APIキーは環境変数で設定してください', {
+        description: '.env.local にHEYGEN_API_KEYを追加してください',
+      })
+    }
   }
 
   return (
@@ -150,6 +161,7 @@ export default function SettingsPage() {
                   variant={connection.connected ? 'outline' : 'default'}
                   className={connection.connected ? 'border-zinc-700' : 'bg-pink-500 hover:bg-pink-600'}
                   disabled={connection.name === 'Supabase'}
+                  onClick={() => handleConnect(connection.name)}
                 >
                   {connection.connected ? '設定' : '接続'}
                 </Button>

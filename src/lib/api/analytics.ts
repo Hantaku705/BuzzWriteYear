@@ -172,33 +172,45 @@ export async function getVideoPerformance(): Promise<VideoPerformance[]> {
 
   if (!videos || !Array.isArray(videos)) return []
 
+  // バッチクエリで全動画の分析データを一括取得（N+1クエリ最適化）
+  const videoIds = (videos as VideoRow[]).map(v => v.id)
+  const { data: allAnalytics } = await supabase
+    .from('video_analytics')
+    .select('video_id, views, likes, comments, shares, clicks, orders, gmv, recorded_at')
+    .in('video_id', videoIds)
+    .order('recorded_at', { ascending: false })
+
+  // 各動画の最新の分析データをマップ化
+  const analyticsMap = new Map<string, AnalyticsRow>()
+  if (allAnalytics && Array.isArray(allAnalytics)) {
+    for (const a of allAnalytics as (AnalyticsRow & { video_id: string })[]) {
+      // 最初に見つかったもの（最新）のみを保持
+      if (!analyticsMap.has(a.video_id)) {
+        analyticsMap.set(a.video_id, a)
+      }
+    }
+  }
+
   const result: VideoPerformance[] = []
 
   for (const video of videos as VideoRow[]) {
-    const { data: analytics } = await supabase
-      .from('video_analytics')
-      .select('views, likes, comments, shares, clicks, orders, gmv')
-      .eq('video_id', video.id)
-      .order('recorded_at', { ascending: false })
-      .limit(1)
-      .single()
+    const analytics = analyticsMap.get(video.id)
 
     if (analytics) {
-      const a = analytics as AnalyticsRow
-      const conversionRate = a.clicks > 0 ? a.orders / a.clicks : 0
+      const conversionRate = analytics.clicks > 0 ? analytics.orders / analytics.clicks : 0
 
       result.push({
         id: video.id,
         title: video.title,
         templateType: video.template?.name || video.content_type,
         postedAt: video.posted_at || '',
-        views: a.views,
-        likes: a.likes,
-        comments: a.comments,
-        shares: a.shares,
-        clicks: a.clicks,
-        orders: a.orders,
-        gmv: a.gmv,
+        views: analytics.views,
+        likes: analytics.likes,
+        comments: analytics.comments,
+        shares: analytics.shares,
+        clicks: analytics.clicks,
+        orders: analytics.orders,
+        gmv: analytics.gmv,
         conversionRate,
         trend: 'stable',
       })
@@ -219,9 +231,10 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
     performance_score: number | null
   }
 
-  type VideoIdRow = { id: string }
+  type VideoRow = { id: string; template_id: string }
 
   type AnalyticsRow = {
+    video_id: string
     views: number
     clicks: number
     orders: number
@@ -234,34 +247,60 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
 
   if (!templates || !Array.isArray(templates)) return []
 
+  const templateList = templates as TemplateRow[]
+  const templateIds = templateList.map(t => t.id)
+
+  // バッチクエリ1: 全テンプレートの動画を一括取得
+  const { data: allVideos } = await supabase
+    .from('videos')
+    .select('id, template_id')
+    .in('template_id', templateIds)
+
+  const videoList = (allVideos as VideoRow[] | null) || []
+  const videoIds = videoList.map(v => v.id)
+
+  // バッチクエリ2: 全動画の分析データを一括取得
+  const { data: allAnalytics } = videoIds.length > 0
+    ? await supabase
+        .from('video_analytics')
+        .select('video_id, views, clicks, orders, gmv')
+        .in('video_id', videoIds)
+    : { data: [] }
+
+  // テンプレートごとの動画IDをマップ化
+  const templateVideoMap = new Map<string, string[]>()
+  for (const video of videoList) {
+    const existing = templateVideoMap.get(video.template_id) || []
+    existing.push(video.id)
+    templateVideoMap.set(video.template_id, existing)
+  }
+
+  // 動画IDごとの分析データをマップ化
+  const videoAnalyticsMap = new Map<string, AnalyticsRow[]>()
+  if (allAnalytics && Array.isArray(allAnalytics)) {
+    for (const a of allAnalytics as AnalyticsRow[]) {
+      const existing = videoAnalyticsMap.get(a.video_id) || []
+      existing.push(a)
+      videoAnalyticsMap.set(a.video_id, existing)
+    }
+  }
+
   const result: TemplatePerformance[] = []
 
-  for (const template of templates as TemplateRow[]) {
-    // Get videos using this template
-    const { data: videos } = await supabase
-      .from('videos')
-      .select('id')
-      .eq('template_id', template.id)
-
-    const videoList = (videos as VideoIdRow[] | null) || []
-    const videoCount = videoList.length
+  for (const template of templateList) {
+    const videoIdsForTemplate = templateVideoMap.get(template.id) || []
+    const videoCount = videoIdsForTemplate.length
 
     if (videoCount === 0) continue
-
-    // Get analytics for these videos
-    const videoIds = videoList.map((v) => v.id)
-    const { data: analytics } = await supabase
-      .from('video_analytics')
-      .select('views, clicks, orders, gmv')
-      .in('video_id', videoIds)
 
     let totalViews = 0
     let totalClicks = 0
     let totalOrders = 0
     let totalGmv = 0
 
-    if (analytics && Array.isArray(analytics)) {
-      for (const a of analytics as AnalyticsRow[]) {
+    for (const videoId of videoIdsForTemplate) {
+      const analyticsForVideo = videoAnalyticsMap.get(videoId) || []
+      for (const a of analyticsForVideo) {
         totalViews += a.views || 0
         totalClicks += a.clicks || 0
         totalOrders += a.orders || 0

@@ -139,42 +139,62 @@ export async function getTopProducts(limit: number = 5): Promise<TopProduct[]> {
   if (error) throw error
 
   const productList = (products as ProductRow[] | null) ?? []
+  if (productList.length === 0) return []
+
+  const productIds = productList.map(p => p.id)
+
+  // バッチクエリ1: 全製品の動画を一括取得（N+1クエリ最適化）
+  const { data: allVideos } = await supabase
+    .from('videos')
+    .select('id, product_id')
+    .in('product_id', productIds)
+
+  type VideoWithProduct = { id: string; product_id: string }
+  const videoList = (allVideos as VideoWithProduct[] | null) ?? []
+  const videoIds = videoList.map(v => v.id)
+
+  // バッチクエリ2: 全動画の分析データを一括取得
+  const { data: allAnalytics } = videoIds.length > 0
+    ? await supabase
+        .from('video_analytics')
+        .select('video_id, gmv')
+        .in('video_id', videoIds)
+    : { data: [] }
+
+  type AnalyticsWithVideo = { video_id: string; gmv: number }
+  const analyticsList = (allAnalytics as AnalyticsWithVideo[] | null) ?? []
+
+  // 製品ごとの動画IDをマップ化
+  const productVideoMap = new Map<string, string[]>()
+  for (const video of videoList) {
+    const existing = productVideoMap.get(video.product_id) || []
+    existing.push(video.id)
+    productVideoMap.set(video.product_id, existing)
+  }
+
+  // 動画IDごとのGMVをマップ化
+  const videoGmvMap = new Map<string, number>()
+  for (const a of analyticsList) {
+    const existing = videoGmvMap.get(a.video_id) || 0
+    videoGmvMap.set(a.video_id, existing + (a.gmv || 0))
+  }
+
   const result: TopProduct[] = []
 
   for (const product of productList) {
-    // Get video count for this product
-    const { count: videoCount } = await supabase
-      .from('videos')
-      .select('*', { count: 'exact', head: true })
-      .eq('product_id', product.id)
+    const productVideoIds = productVideoMap.get(product.id) || []
+    const videoCount = productVideoIds.length
 
-    // Get GMV for this product's videos
-    const { data: videoIds } = await supabase
-      .from('videos')
-      .select('id')
-      .eq('product_id', product.id)
-
-    const videoIdList = (videoIds as VideoIdRow[] | null) ?? []
     let totalGMV = 0
-
-    if (videoIdList.length > 0) {
-      const { data: analytics } = await supabase
-        .from('video_analytics')
-        .select('gmv')
-        .in(
-          'video_id',
-          videoIdList.map((v) => v.id)
-        )
-
-      const analyticsList = (analytics as GmvRow[] | null) ?? []
-      totalGMV = analyticsList.reduce((sum, a) => sum + (a.gmv || 0), 0)
+    for (const videoId of productVideoIds) {
+      totalGMV += videoGmvMap.get(videoId) || 0
     }
 
     result.push({
       id: product.id,
       name: product.name,
       images: product.images,
-      video_count: videoCount ?? 0,
+      video_count: videoCount,
       total_gmv: totalGMV,
     })
   }
