@@ -108,6 +108,20 @@
   - アクティブ列のハイライト（pink-400 + bg-pink-500/10）
   - ソート方向矢印（ChevronUp/ChevronDown）表示
   - ホバー時の背景色変化
+- [x] **Kling AI O1機能フル実装**
+  - モデル選択 (1.5, 1.6, 2.1, 2.1-master, 2.5, 2.6)
+  - アスペクト比選択 (9:16 TikTok, 16:9 YouTube, 1:1 Instagram)
+  - 品質モード (Standard/Professional)
+  - デュアルキーフレーム (O1コア機能 - 開始/終了画像補間)
+  - 音声生成 (2.6モデルのみ)
+  - 動的価格表示 ($0.16〜$1.92)
+- [x] **動画プレビュー修正（AI生成動画対応）**
+  - remote_urlがある場合はHTML5 videoで表示
+  - ステータス別メッセージ表示（generating/cancelled/failed）
+- [x] **コード分離（クライアント/サーバー）**
+  - `src/lib/video/kling/constants.ts` 新規作成（型定義・価格計算）
+  - `src/lib/video/kling/client.ts` をサーバー専用に整理
+- [x] **本番デプロイ完了**
 
 ### 作業中のタスク
 - なし
@@ -157,10 +171,32 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 最新コミット
 ```
-e381ce8 feat(ux): add toast notifications, skeleton loading, and success animations
+15aaddd feat(kling): implement O1 features for flexible video generation
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション22）
+- **Kling AI O1機能フル実装**
+  - Phase 1: 型定義（database.ts - generation_config, KlingModelVersion等）
+  - Phase 2: API層（route.ts - バリデーション拡張、queue/client.ts - KlingJobData拡張）
+  - Phase 3: ワーカー（start-worker.ts - PiAPIリクエスト形式対応）
+  - Phase 4: フック（useKlingGenerate.ts - パラメータ追加）
+  - Phase 5: UI（VideoGenerateModal.tsx - O1 UI追加）
+    - モデル選択ドロップダウン（1.5〜2.6、音声/Pro専用バッジ付き）
+    - アスペクト比ビジュアルボタン（9:16/16:9/1:1 + プラットフォーム名）
+    - 品質モードトグル（Standard/Professional）
+    - 終了フレーム画像入力（O1デュアルキーフレーム）
+    - 音声生成トグル（2.6選択時のみ表示）
+    - 動的価格表示（モデル/品質/長さでリアルタイム計算）
+- **動画プレビュー修正**
+  - AI生成動画（remote_url有り）をHTML5 videoで表示
+  - ステータス別メッセージ（generating/cancelled/failed）
+- **コード分離**
+  - `constants.ts` 新規作成（クライアント用型定義・価格計算）
+  - `client.ts` をサーバー専用に整理（Node.js依存コード分離）
+- **ビルド成功・本番デプロイ完了**
+- **残タスク**: Supabase本番DBでgeneration_configカラム追加マイグレーション要
 
 ### 2026-01-11（セッション21）
 - **/reco 10 subagent 並列分析実行**

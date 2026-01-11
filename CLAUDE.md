@@ -248,10 +248,26 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 | 方式 | 用途 | 料金 |
 |------|------|------|
-| Kling AI | WebCM風高品質動画（Image-to-Video） | $0.16〜/動画 |
+| Kling AI | WebCM風高品質動画（Image-to-Video）| $0.16〜$1.92/動画 |
 | Remotion | テンプレートベースのモーショングラフィックス | 無料 |
 | HeyGen | AIアバター商品紹介 | 有料 |
 | FFmpeg | UGC風加工、素材リミックス | 無料 |
+
+### Kling AI O1機能
+
+| 機能 | 説明 |
+|------|------|
+| モデル選択 | 1.5, 1.6, 2.1, 2.1-master, 2.5, 2.6 |
+| アスペクト比 | 9:16 (TikTok), 16:9 (YouTube), 1:1 (Instagram) |
+| 品質モード | Standard / Professional |
+| デュアルキーフレーム | 開始/終了画像からAIが補間動画生成（O1コア機能） |
+| 音声生成 | 2.6モデルのみ対応 |
+| 動的価格 | モデル/品質/長さで自動計算表示 |
+
+**ファイル構成:**
+- `src/lib/video/kling/constants.ts` - 型定義・価格計算（クライアント用）
+- `src/lib/video/kling/client.ts` - API関数（サーバー専用）
+- `src/lib/video/kling/prompts.ts` - プロンプトプリセット
 
 ---
 
