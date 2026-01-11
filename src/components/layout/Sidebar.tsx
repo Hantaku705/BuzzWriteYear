@@ -9,11 +9,13 @@ import {
   BarChart3,
   Settings,
   Home,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navigation = [
   { name: 'ダッシュボード', href: '/', icon: Home },
+  { name: '動画生成', href: '/generate', icon: Sparkles, highlight: true },
   { name: '商品管理', href: '/products', icon: Package },
   { name: '動画管理', href: '/videos', icon: Video },
   { name: 'テンプレート', href: '/templates', icon: LayoutTemplate },
@@ -34,6 +36,7 @@ export function Sidebar() {
         {navigation.map((item) => {
           const isActive = pathname === item.href ||
             (item.href !== '/' && pathname.startsWith(item.href))
+          const isHighlight = 'highlight' in item && item.highlight
           return (
             <Link
               key={item.name}
@@ -41,12 +44,21 @@ export function Sidebar() {
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-pink-500/10 text-pink-500'
-                  : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                  ? isHighlight
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-pink-500/10 text-pink-500'
+                  : isHighlight
+                    ? 'text-emerald-400 hover:bg-emerald-500/10'
+                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className={cn('h-5 w-5', isHighlight && !isActive && 'text-emerald-400')} />
               {item.name}
+              {isHighlight && (
+                <span className="ml-auto px-1.5 py-0.5 text-[10px] bg-emerald-500 text-white rounded">
+                  NEW
+                </span>
+              )}
             </Link>
           )
         })}
