@@ -322,6 +322,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | Supabase SSR型推論エラー | 明示的型定義 + `as TypeName` アサーション |
 | Recharts Tooltip formatter | `value as number` でキャスト |
 | Node.js fetch Buffer | `Blob` に変換して送信 |
+| Render REDIS_URL認証エラー | RenderダッシュボードでREDIS_URLを最新値に更新 |
 
 ---
 

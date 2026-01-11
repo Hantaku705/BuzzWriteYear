@@ -167,10 +167,11 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M CLAUDE.md
-M tests/e2e/app-verification.spec.ts
-M tests/screenshots/analytics-dashboard.png
-?? .claude/
+A  .claude/commands/confirm.md
+M  CLAUDE.md
+M  HANDOFF.md
+M  tests/e2e/app-verification.spec.ts
+M  tests/screenshots/analytics-dashboard.png
 ```
 
 ## 最新コミット
@@ -179,6 +180,25 @@ M tests/screenshots/analytics-dashboard.png
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション24）
+- **動画生成0%問題の診断・解決**
+  - 症状: 動画生成進捗が0%で停止
+  - 原因1: Renderワーカーが古いコード（`model: "kling-v1"`形式）
+  - 原因2: REDIS_URL認証エラー（WRONGPASS）
+- **Redis キュー状態確認・クリーンアップ**
+  - 6件の失敗ジョブを削除（"invalid model: kling-v1"等のエラー）
+  - 2件の待機ジョブを確認
+- **ローカルワーカーで待機ジョブ処理**
+  - `npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts`
+  - Job 8: キャンセル済み → 完了
+  - Job 9: Kling API正常処理 → 動画生成成功（5d036185）
+  - O1パラメータ正常動作確認（`model: "kling"` + `version: "1.6"`）
+- **Render REDIS_URL更新**
+  - ユーザーがRenderダッシュボードでREDIS_URLを正しい値に更新
+  - 認証エラー解消
+- **最終キュー状態**
+  - Waiting: 0, Active: 0, Completed: 3, Failed: 0
 
 ### 2026-01-11（セッション23）
 - **/confirm スキル作成**
