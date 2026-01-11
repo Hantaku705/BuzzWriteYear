@@ -654,7 +654,7 @@ export function KlingAdvancedModal({ open, onOpenChange }: KlingAdvancedModalPro
                 <div>
                   <p className="text-xl font-bold text-white">AI動画を生成中...</p>
                   <p className="text-zinc-400 mt-1">
-                    {videoStatus?.progress_message || '処理中...'} ({formatElapsedTime(elapsedTime)})
+                    {videoStatus?.message || '処理中...'} ({formatElapsedTime(elapsedTime)})
                   </p>
                 </div>
                 <Progress value={videoStatus?.progress || 0} className="max-w-xs mx-auto" />

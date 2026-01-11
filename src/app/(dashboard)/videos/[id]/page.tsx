@@ -33,6 +33,7 @@ import { useVideo, useDeleteVideo } from '@/hooks/useVideos'
 import { RemotionPreview } from '@/components/video/RemotionPreview'
 import { VideoDownloadButton } from '@/components/video/VideoDownloadButton'
 import { VariantGenerateModal } from '@/components/video/VariantGenerateModal'
+import { VideoEditActions } from '@/components/video/VideoEditActions'
 import type { CompositionId } from '@/hooks/useGenerateVideo'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -116,6 +117,11 @@ export default function VideoDetailPage({
   const compositionId = contentTypeToCompositionId[video.content_type]
   const inputProps = video.input_props as Record<string, unknown> | null
 
+  // AI編集用: generation_configからoriginTaskIdを取得
+  const generationConfig = video.generation_config as Record<string, unknown> | null
+  const originTaskId = generationConfig?.originTaskId as string | undefined
+  const isKlingVideo = video.generation_method === 'kling' && video.status === 'ready'
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -167,6 +173,16 @@ export default function VideoDetailPage({
               <Layers className="mr-2 h-4 w-4" />
               バリアント生成
             </Button>
+          )}
+          {/* AI編集（Kling動画のみ） */}
+          {isKlingVideo && video.product_id && (
+            <VideoEditActions
+              videoId={id}
+              videoTitle={video.title}
+              productId={video.product_id}
+              originTaskId={originTaskId}
+              durationSeconds={video.duration_seconds ?? undefined}
+            />
           )}
           {video.tiktok_video_id && (
             <Button variant="outline" className="border-zinc-700">

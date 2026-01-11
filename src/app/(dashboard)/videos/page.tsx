@@ -34,6 +34,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { VideoGenerateModal } from '@/components/video/VideoGenerateModal'
+import { KlingAdvancedModal } from '@/components/video/KlingAdvancedModal'
 import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
@@ -65,6 +66,7 @@ export default function VideosPage() {
   const [activeTab, setActiveTab] = useState('all')
   const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null)
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
+  const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false)
 
   const { data: videos = [], isLoading, error, refetch } = useVideos()
   const deleteVideo = useDeleteVideo()
@@ -329,6 +331,13 @@ export default function VideosPage() {
       <VideoGenerateModal
         open={isGenerateModalOpen}
         onOpenChange={setIsGenerateModalOpen}
+        onOpenAdvancedModal={() => setIsAdvancedModalOpen(true)}
+      />
+
+      {/* Kling Advanced Modal (O1 Features) */}
+      <KlingAdvancedModal
+        open={isAdvancedModalOpen}
+        onOpenChange={setIsAdvancedModalOpen}
       />
     </div>
   )

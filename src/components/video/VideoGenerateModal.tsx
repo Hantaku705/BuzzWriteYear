@@ -50,6 +50,7 @@ interface VideoGenerateModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onOpenVariantModal?: (videoId: string, videoTitle: string) => void
+  onOpenAdvancedModal?: () => void
 }
 
 type GenerationMode = 'remotion' | 'kling'
@@ -89,7 +90,7 @@ const remotionTemplates: TemplateOption[] = [
   },
 ]
 
-export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: VideoGenerateModalProps) {
+export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onOpenAdvancedModal }: VideoGenerateModalProps) {
   // モード選択
   const [generationMode, setGenerationMode] = useState<GenerationMode | null>(null)
 
@@ -570,6 +571,37 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
                 </CardContent>
               </Card>
             </div>
+
+            {/* 高度なAI生成への導線 */}
+            {onOpenAdvancedModal && (
+              <div className="pt-4 border-t border-zinc-800">
+                <Card
+                  className="cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50"
+                  onClick={() => {
+                    resetForm()
+                    onOpenChange(false)
+                    onOpenAdvancedModal()
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-600 to-pink-600">
+                        <Layers className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-white">高度なAI生成（O1機能）</p>
+                        <p className="text-sm text-zinc-400">
+                          Motion Reference・Camera Control・Elements（複数画像合成）
+                        </p>
+                      </div>
+                      <div className="text-xs bg-purple-500/30 text-purple-200 px-2 py-1 rounded">
+                        NEW
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         )}
 
