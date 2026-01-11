@@ -196,7 +196,9 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
   - `constants.ts` 新規作成（クライアント用型定義・価格計算）
   - `client.ts` をサーバー専用に整理（Node.js依存コード分離）
 - **ビルド成功・本番デプロイ完了**
-- **残タスク**: Supabase本番DBでgeneration_configカラム追加マイグレーション要
+- **本番DBマイグレーション完了**
+  - generation_config JSONB カラム追加
+  - scripts/run-o1-migration.js で実行
 
 ### 2026-01-11（セッション21）
 - **/reco 10 subagent 並列分析実行**
