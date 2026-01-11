@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { Switch } from '@/components/ui/switch'
 import { Loader2, Video, Sparkles, ArrowRight, ArrowLeft, Wand2, Film, X, CheckCircle, XCircle, Layers, ExternalLink, Plus, PartyPopper } from 'lucide-react'
 import { toast } from 'sonner'
 import { RemotionPreview } from './RemotionPreview'
@@ -45,6 +46,7 @@ import {
   type KlingAspectRatio,
   type KlingQuality,
 } from '@/lib/video/kling/constants'
+import { useVideoSettingsStore } from '@/store/videoSettingsStore'
 
 interface VideoGenerateModalProps {
   open: boolean
@@ -91,16 +93,24 @@ const remotionTemplates: TemplateOption[] = [
 ]
 
 export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onOpenAdvancedModal }: VideoGenerateModalProps) {
-  // モード選択
-  const [generationMode, setGenerationMode] = useState<GenerationMode | null>(null)
+  // 設定ストア（永続化）
+  const videoSettings = useVideoSettingsStore()
+
+  // SSR対応: クライアント側でhydration
+  useEffect(() => {
+    useVideoSettingsStore.persist.rehydrate()
+  }, [])
+
+  // モード選択（ストアから初期値）
+  const [generationMode, setGenerationModeLocal] = useState<GenerationMode | null>(null)
 
   // 共通State
   const [step, setStep] = useState<Step>('mode')
   const [selectedProductId, setSelectedProductId] = useState<string>('')
   const [title, setTitle] = useState('')
 
-  // Remotion用State
-  const [selectedTemplate, setSelectedTemplate] = useState<CompositionId | null>(null)
+  // Remotion用State（テンプレートはストアから）
+  const [selectedTemplate, setSelectedTemplateLocal] = useState<CompositionId | null>(null)
   const [catchCopy, setCatchCopy] = useState('')
   const [features, setFeatures] = useState(['', '', ''])
   const [ctaText, setCtaText] = useState('今すぐチェック')
@@ -115,17 +125,104 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
     { icon: '💪', title: '', description: '' },
   ])
 
-  // Kling用State
-  const [selectedPreset, setSelectedPreset] = useState<PromptPreset>(KLING_PRESETS[0])
+  // Kling用State（ストアから初期値）
+  const [selectedPreset, setSelectedPresetLocal] = useState<PromptPreset>(KLING_PRESETS[0])
   const [customPrompt, setCustomPrompt] = useState('')
-  const [klingDuration, setKlingDuration] = useState<5 | 10>(5)
-  // O1新機能State
-  const [modelVersion, setModelVersion] = useState<KlingModelVersion>('1.6')
-  const [aspectRatio, setAspectRatio] = useState<KlingAspectRatio>('9:16')
-  const [quality, setQuality] = useState<KlingQuality>('standard')
-  const [enableAudio, setEnableAudio] = useState(false)
+  const [klingDuration, setKlingDurationLocal] = useState<5 | 10>(5)
+  // O1新機能State（ストアから初期値）
+  const [modelVersion, setModelVersionLocal] = useState<KlingModelVersion>('1.6')
+  const [aspectRatio, setAspectRatioLocal] = useState<KlingAspectRatio>('9:16')
+  const [quality, setQualityLocal] = useState<KlingQuality>('standard')
+  const [enableAudio, setEnableAudioLocal] = useState(false)
   const [endKeyframeImage, setEndKeyframeImage] = useState('')
-  const [cfgScale, setCfgScale] = useState(0.5)
+  const [cfgScale, setCfgScaleLocal] = useState(0.5)
+
+  // ストアから設定を復元（モーダルが開いた時）
+  useEffect(() => {
+    if (open) {
+      // ストアの値をローカルステートに反映
+      setGenerationModeLocal(videoSettings.generationMode as GenerationMode | null)
+      setSelectedTemplateLocal(videoSettings.selectedTemplate as CompositionId | null)
+      setModelVersionLocal(videoSettings.modelVersion)
+      setAspectRatioLocal(videoSettings.aspectRatio)
+      setQualityLocal(videoSettings.quality)
+      setKlingDurationLocal(videoSettings.klingDuration)
+      setCfgScaleLocal(videoSettings.cfgScale)
+      setEnableAudioLocal(videoSettings.enableAudio)
+
+      // プリセットを復元
+      const preset = KLING_PRESETS.find(p => p.id === videoSettings.selectedPresetId)
+      if (preset) {
+        setSelectedPresetLocal(preset)
+      }
+
+      // 前回の商品を復元
+      if (videoSettings.lastProductId) {
+        setSelectedProductId(videoSettings.lastProductId)
+      }
+    }
+  }, [open, videoSettings])
+
+  // 設定変更をストアに保存するラッパー関数
+  const setGenerationMode = (mode: GenerationMode | null) => {
+    setGenerationModeLocal(mode)
+    videoSettings.setGenerationMode(mode)
+  }
+
+  const setSelectedTemplate = (template: CompositionId | null) => {
+    setSelectedTemplateLocal(template)
+    videoSettings.setSelectedTemplate(template)
+  }
+
+  const setSelectedPreset = (preset: PromptPreset) => {
+    setSelectedPresetLocal(preset)
+    videoSettings.setSelectedPresetId(preset.id)
+  }
+
+  const setModelVersion = (version: KlingModelVersion) => {
+    setModelVersionLocal(version)
+    videoSettings.setModelVersion(version)
+  }
+
+  const setAspectRatio = (ratio: KlingAspectRatio) => {
+    setAspectRatioLocal(ratio)
+    videoSettings.setAspectRatio(ratio)
+  }
+
+  const setQuality = (q: KlingQuality) => {
+    setQualityLocal(q)
+    videoSettings.setQuality(q)
+  }
+
+  const setKlingDuration = (duration: 5 | 10) => {
+    setKlingDurationLocal(duration)
+    videoSettings.setKlingDuration(duration)
+  }
+
+  const setCfgScale = (scale: number) => {
+    setCfgScaleLocal(scale)
+    videoSettings.setCfgScale(scale)
+  }
+
+  const setEnableAudio = (enabled: boolean) => {
+    setEnableAudioLocal(enabled)
+    videoSettings.setEnableAudio(enabled)
+  }
+
+  // 連続生成モード（ストアから同期）
+  const [autoCloseOnComplete, setAutoCloseOnCompleteLocal] = useState(false)
+
+  // autoCloseOnCompleteをストアから復元
+  useEffect(() => {
+    if (open) {
+      setAutoCloseOnCompleteLocal(videoSettings.autoCloseOnComplete)
+    }
+  }, [open, videoSettings.autoCloseOnComplete])
+
+  const setAutoCloseOnComplete = (enabled: boolean) => {
+    setAutoCloseOnCompleteLocal(enabled)
+    videoSettings.setAutoCloseOnComplete(enabled)
+  }
 
   // 生成中State
   const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null)
@@ -153,7 +250,7 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
   }, [step, startTime])
 
   // 生成完了/失敗時の処理
-  // 成功時: Toast通知 + ユーザーに次のアクションを選ばせる
+  // 成功時: 連続生成モードなら自動で次へ、そうでなければユーザーに次のアクションを選ばせる
   // 失敗・キャンセル時: 3秒後に自動で閉じる
   useEffect(() => {
     if (!videoStatus) return
@@ -161,10 +258,21 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
     if (videoStatus.status === 'ready') {
       // 成功通知
       toast.success('動画が完成しました！', {
-        description: 'A/Bテスト用バリアントの生成をおすすめします',
+        description: autoCloseOnComplete ? '連続生成モード: 次の生成準備中...' : 'A/Bテスト用バリアントの生成をおすすめします',
         icon: <PartyPopper className="h-5 w-5 text-pink-500" />,
-        duration: 5000,
+        duration: autoCloseOnComplete ? 2000 : 5000,
       })
+
+      // 連続生成モード: 自動で次の生成へ
+      if (autoCloseOnComplete) {
+        const timeout = setTimeout(() => {
+          setGeneratingVideoId(null)
+          setStartTime(null)
+          setElapsedTime(0)
+          setStep('mode')
+        }, 1500)
+        return () => clearTimeout(timeout)
+      }
     } else if (videoStatus.status === 'failed') {
       toast.error('動画生成に失敗しました', {
         description: '再度お試しください',
@@ -182,7 +290,7 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
       }, 3000)
       return () => clearTimeout(timeout)
     }
-  }, [videoStatus?.status, onOpenChange])
+  }, [videoStatus?.status, onOpenChange, autoCloseOnComplete])
 
   // 次のアクション: バリアント生成
   const handleCreateVariants = () => {
@@ -207,7 +315,58 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
     setStartTime(null)
     setElapsedTime(0)
     setStep('mode')
-    setGenerationMode(null)
+  }
+
+  // クイック生成: 前回の設定で直接生成
+  const handleQuickGenerate = async () => {
+    const { lastProductId, selectedPresetId, modelVersion: storedModel, aspectRatio: storedRatio, quality: storedQuality, klingDuration: storedDuration, cfgScale: storedCfgScale, enableAudio: storedEnableAudio } = videoSettings
+
+    if (!lastProductId) {
+      toast.error('商品が選択されていません')
+      return
+    }
+
+    // 商品を取得
+    const product = products.find(p => p.id === lastProductId)
+    if (!product) {
+      toast.error('商品が見つかりません')
+      return
+    }
+
+    // プリセットを取得
+    const preset = KLING_PRESETS.find(p => p.id === selectedPresetId) || KLING_PRESETS[0]
+    const prompt = `${preset.prompt}, featuring "${product.name}"`
+
+    const videoTitle = `${product.name} - AI生成（${preset.labelJa}）`
+
+    try {
+      const result = await generateKling.mutateAsync({
+        productId: lastProductId,
+        mode: 'image-to-video',
+        imageUrl: product.images[0],
+        prompt,
+        negativePrompt: preset.negativePrompt,
+        duration: storedDuration,
+        presetId: selectedPresetId,
+        title: videoTitle,
+        modelVersion: storedModel,
+        aspectRatio: storedRatio,
+        quality: storedQuality,
+        cfgScale: storedCfgScale,
+        enableAudio: supportsAudio(storedModel) ? storedEnableAudio : undefined,
+      })
+
+      // 生成画面に遷移
+      if (result?.video?.id) {
+        setGeneratingVideoId(result.video.id)
+        setStartTime(Date.now())
+        setElapsedTime(0)
+        setStep('generating')
+        toast.success('クイック生成を開始しました')
+      }
+    } catch {
+      // エラーはuseKlingGenerateで処理される
+    }
   }
 
   const selectedProduct = useMemo(
@@ -367,6 +526,9 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
 
     const videoTitle = title || `${selectedProduct?.name} - AI生成（${selectedPreset.labelJa}）`
 
+    // 商品情報をストアに保存（次回のクイック生成用）
+    videoSettings.setLastProduct(selectedProductId, selectedProduct?.name || null)
+
     try {
       const result = await generateKling.mutateAsync({
         productId: selectedProductId,
@@ -415,10 +577,9 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
   }
 
   const resetForm = () => {
-    setGenerationMode(null)
+    // ステップを初期化（設定は保持）
     setStep('mode')
-    setSelectedTemplate(null)
-    setSelectedProductId('')
+    // 商品コンテンツをリセット（設定は保持）
     setTitle('')
     setCatchCopy('')
     setFeatures(['', '', ''])
@@ -433,20 +594,18 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
       { icon: '🎯', title: '', description: '' },
       { icon: '💪', title: '', description: '' },
     ])
-    setSelectedPreset(KLING_PRESETS[0])
     setCustomPrompt('')
-    setKlingDuration(5)
-    // O1 State
-    setModelVersion('1.6')
-    setAspectRatio('9:16')
-    setQuality('standard')
-    setEnableAudio(false)
     setEndKeyframeImage('')
-    setCfgScale(0.5)
     // 生成中State
     setGeneratingVideoId(null)
     setStartTime(null)
     setElapsedTime(0)
+
+    // 注: 以下の設定はストアに保存されるためリセットしない
+    // - generationMode, selectedTemplate (モード・テンプレート)
+    // - modelVersion, aspectRatio, quality, klingDuration, cfgScale, enableAudio (Kling設定)
+    // - selectedPreset (プリセット)
+    // - selectedProductId (前回の商品はストアから復元)
   }
 
   const canProceed = () => {
@@ -521,6 +680,45 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
         {/* Step 0: Mode Selection */}
         {step === 'mode' && (
           <div className="space-y-4">
+            {/* クイック生成カード - 前回の設定がある場合のみ表示 */}
+            {videoSettings.canQuickGenerate() && videoSettings.lastProductName && (
+              <Card
+                className="cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 hover:border-green-500"
+                onClick={() => {
+                  // 前回の設定で直接生成
+                  handleQuickGenerate()
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-500">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-white">クイック生成</p>
+                      <p className="text-sm text-zinc-400">
+                        {videoSettings.lastProductName} × {KLING_PRESETS.find(p => p.id === videoSettings.selectedPresetId)?.labelJa || videoSettings.selectedPresetId}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {videoSettings.modelVersion} / {videoSettings.aspectRatio} / {videoSettings.quality}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white"
+                      disabled={generateKling.isPending}
+                    >
+                      {generateKling.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>いつもの設定で生成</>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <p className="text-zinc-400 text-sm">生成方法を選択してください</p>
             <div className="grid grid-cols-2 gap-4">
               <Card
@@ -921,6 +1119,18 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
                     <p className="text-sm text-yellow-200">
                       AI動画生成には1〜3分かかります。生成完了後、動画一覧に表示されます。
                     </p>
+                  </div>
+
+                  {/* 連続生成モード */}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    <div>
+                      <p className="text-sm font-medium text-white">連続生成モード</p>
+                      <p className="text-xs text-zinc-400">完了後、自動で次の生成画面へ</p>
+                    </div>
+                    <Switch
+                      checked={autoCloseOnComplete}
+                      onCheckedChange={setAutoCloseOnComplete}
+                    />
                   </div>
                 </>
               )}

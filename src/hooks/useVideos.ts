@@ -8,6 +8,7 @@ import {
   createVideo,
   updateVideoStatus,
   deleteVideo,
+  deleteVideos,
 } from '@/lib/api/videos'
 import type { VideoInsert } from '@/types/database'
 
@@ -69,6 +70,17 @@ export function useDeleteVideo() {
 
   return useMutation({
     mutationFn: deleteVideo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: videoKeys.all })
+    },
+  })
+}
+
+export function useDeleteVideos() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (ids: string[]) => deleteVideos(ids),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: videoKeys.all })
     },

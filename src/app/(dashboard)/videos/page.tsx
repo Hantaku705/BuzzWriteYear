@@ -32,10 +32,11 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { LoginPrompt } from '@/components/auth/LoginPrompt'
 import { VideoGenerateModal } from '@/components/video/VideoGenerateModal'
 import { KlingAdvancedModal } from '@/components/video/KlingAdvancedModal'
-import { useVideos, useDeleteVideo } from '@/hooks/useVideos'
+import { useVideos, useDeleteVideo, useDeleteVideos } from '@/hooks/useVideos'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import type { VideoWithProduct } from '@/lib/api/videos'
@@ -68,8 +69,58 @@ export default function VideosPage() {
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false)
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false)
 
+  // 一括選択機能
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+
   const { data: videos = [], isLoading, error, refetch } = useVideos()
   const deleteVideo = useDeleteVideo()
+  const deleteVideos = useDeleteVideos()
+
+  // 選択モード切替
+  const toggleSelectionMode = () => {
+    if (isSelectionMode) {
+      setSelectedIds(new Set())
+    }
+    setIsSelectionMode(!isSelectionMode)
+  }
+
+  // 個別選択/解除
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds)
+    if (newSet.has(id)) {
+      newSet.delete(id)
+    } else {
+      newSet.add(id)
+    }
+    setSelectedIds(newSet)
+  }
+
+  // 全選択/全解除
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredVideos.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredVideos.map(v => v.id)))
+    }
+  }
+
+  // 一括削除
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+
+    try {
+      await deleteVideos.mutateAsync(ids)
+      toast.success(`${ids.length}件の動画を削除しました`)
+      setSelectedIds(new Set())
+      setIsSelectionMode(false)
+    } catch {
+      toast.error('一括削除に失敗しました')
+    }
+    setIsBulkDeleteDialogOpen(false)
+  }
 
   const filteredVideos = useMemo(() => {
     let result = videos
@@ -160,7 +211,7 @@ export default function VideosPage() {
               投稿済み ({videos.filter((v) => v.status === 'posted').length})
             </TabsTrigger>
           </TabsList>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
               <Input
@@ -170,6 +221,14 @@ export default function VideosPage() {
                 className="pl-10 w-64 bg-zinc-900 border-zinc-800"
               />
             </div>
+            <Button
+              variant={isSelectionMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={toggleSelectionMode}
+              className={isSelectionMode ? 'bg-pink-500 hover:bg-pink-600' : 'border-zinc-700'}
+            >
+              {isSelectionMode ? 'キャンセル' : '選択'}
+            </Button>
           </div>
         </div>
 
@@ -244,16 +303,46 @@ export default function VideosPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredVideos.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  video={video}
-                  onDelete={() => setDeletingVideoId(video.id)}
-                  onView={() => router.push(`/videos/${video.id}`)}
-                />
-              ))}
-            </div>
+            <>
+              {/* 選択アクションバー */}
+              {isSelectionMode && (
+                <div className="mb-4 p-3 bg-zinc-800 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selectedIds.size === filteredVideos.length && filteredVideos.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                    <span className="text-sm text-zinc-300">
+                      {selectedIds.size}件選択中
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={selectedIds.size === 0}
+                      onClick={() => setIsBulkDeleteDialogOpen(true)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      一括削除
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredVideos.map((video) => (
+                  <VideoCard
+                    key={video.id}
+                    video={video}
+                    onDelete={() => setDeletingVideoId(video.id)}
+                    onView={() => router.push(`/videos/${video.id}`)}
+                    isSelectionMode={isSelectionMode}
+                    isSelected={selectedIds.has(video.id)}
+                    onToggleSelection={() => toggleSelection(video.id)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </TabsContent>
       </Tabs>}
@@ -327,6 +416,39 @@ export default function VideosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+      >
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              {selectedIds.size}件の動画を削除しますか？
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              この操作は取り消せません。選択した動画ファイルもすべて削除されます。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700">
+              キャンセル
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-500 hover:bg-red-600"
+              disabled={deleteVideos.isPending}
+            >
+              {deleteVideos.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                `${selectedIds.size}件を削除`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Video Generate Modal */}
       <VideoGenerateModal
         open={isGenerateModalOpen}
@@ -347,18 +469,34 @@ function VideoCard({
   video,
   onDelete,
   onView,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
 }: {
   video: VideoWithProduct
   onDelete: () => void
   onView: () => void
+  isSelectionMode?: boolean
+  isSelected?: boolean
+  onToggleSelection?: () => void
 }) {
   const config = statusConfig[video.status] || statusConfig.draft
   const Icon = config.icon
 
+  const handleClick = () => {
+    if (isSelectionMode && onToggleSelection) {
+      onToggleSelection()
+    } else {
+      onView()
+    }
+  }
+
   return (
     <Card
-      className="bg-zinc-900 border-zinc-800 overflow-hidden group cursor-pointer"
-      onClick={onView}
+      className={`bg-zinc-900 border-zinc-800 overflow-hidden group cursor-pointer transition-all ${
+        isSelected ? 'ring-2 ring-pink-500 border-pink-500' : ''
+      }`}
+      onClick={handleClick}
     >
       <div className="relative aspect-[9/16] bg-zinc-800">
         {video.product?.images?.[0] ? (
@@ -372,35 +510,52 @@ function VideoCard({
             <Video className="h-12 w-12 text-zinc-700" />
           </div>
         )}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button
-            size="icon"
-            variant="secondary"
-            className="h-10 w-10"
-            onClick={(e) => {
-              e.stopPropagation()
-              onView()
-            }}
-          >
-            <Play className="h-5 w-5" />
-          </Button>
-          {video.tiktok_video_id && (
-            <Button size="icon" variant="secondary" className="h-10 w-10">
-              <ExternalLink className="h-5 w-5" />
+        {/* 選択モード時はチェックボックスを表示 */}
+        {isSelectionMode ? (
+          <div className="absolute top-2 left-2 z-10">
+            <div
+              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                isSelected ? 'bg-pink-500' : 'bg-zinc-800/80 border border-zinc-600'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleSelection?.()
+              }}
+            >
+              {isSelected && <CheckCircle className="h-4 w-4 text-white" />}
+            </div>
+          </div>
+        ) : (
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-10 w-10"
+              onClick={(e) => {
+                e.stopPropagation()
+                onView()
+              }}
+            >
+              <Play className="h-5 w-5" />
             </Button>
-          )}
-          <Button
-            size="icon"
-            variant="secondary"
-            className="h-10 w-10 hover:bg-red-500"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-          >
-            <Trash2 className="h-5 w-5" />
-          </Button>
-        </div>
+            {video.tiktok_video_id && (
+              <Button size="icon" variant="secondary" className="h-10 w-10">
+                <ExternalLink className="h-5 w-5" />
+              </Button>
+            )}
+            <Button
+              size="icon"
+              variant="secondary"
+              className="h-10 w-10 hover:bg-red-500"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
         <div className="absolute top-2 right-2">
           <Badge className={`${config.color} text-white`}>
             <Icon className="mr-1 h-3 w-3" />
