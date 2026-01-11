@@ -54,7 +54,7 @@ interface KlingJobData {
   videoId: string
   userId: string
   productId: string
-  mode: 'image-to-video' | 'text-to-video'
+  mode: 'image-to-video' | 'text-to-video' | 'elements'  // elements追加
   imageUrl?: string
   imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
@@ -67,6 +67,8 @@ interface KlingJobData {
   quality?: 'standard' | 'pro'
   cfgScale?: number
   enableAudio?: boolean           // 2.6のみ
+  // Elements固有パラメータ
+  elementImages?: string[]        // 1-4枚の要素画像URL
 }
 
 // 進捗更新
@@ -122,8 +124,10 @@ async function generateVideo(params: {
   quality?: string                // standard | pro
   cfgScale?: number               // 0.0 - 1.0
   enableAudio?: boolean           // 2.6のみ
+  elementImages?: string[]        // Elements機能: 1-4枚の要素画像
 }): Promise<{ task_id: string }> {
-  const modelVersion = params.modelVersion || '1.6'
+  // Elementsモードは1.6必須
+  const modelVersion = params.mode === 'elements' ? '1.6' : (params.modelVersion || '1.6')
 
   const input: Record<string, unknown> = {
     prompt: params.prompt,
@@ -134,8 +138,13 @@ async function generateVideo(params: {
     version: modelVersion,
   }
 
+  // Elementsモード: 要素画像配列を追加
+  if (params.mode === 'elements' && params.elementImages?.length) {
+    input.elements = params.elementImages.map(url => ({ image_url: url }))
+    console.log(`[Worker] Elements mode: ${params.elementImages.length} images`)
+  }
   // image_urlがあればimage-to-video、なければtext-to-video
-  if (params.imageUrl) {
+  else if (params.imageUrl) {
     input.image_url = params.imageUrl
   }
 
@@ -269,10 +278,11 @@ async function processKlingJob(job: Job<KlingJobData>) {
     quality,
     cfgScale,
     enableAudio,
+    elementImages,  // Elements機能用
   } = job.data
 
   console.log(`[Worker] Processing job ${job.id} for video ${videoId}`)
-  console.log(`[Worker] Model: ${modelVersion || '1.6'}, Aspect: ${aspectRatio || '9:16'}, Quality: ${quality || 'standard'}`)
+  console.log(`[Worker] Mode: ${mode}, Model: ${modelVersion || '1.6'}, Aspect: ${aspectRatio || '9:16'}, Quality: ${quality || 'standard'}`)
 
   try {
     // キャンセルチェック
@@ -302,6 +312,7 @@ async function processKlingJob(job: Job<KlingJobData>) {
       quality: quality || 'standard',
       cfgScale,
       enableAudio,
+      elementImages,  // Elements機能用
     })
 
     console.log(`[Worker] Task created: ${taskResponse.task_id}`)

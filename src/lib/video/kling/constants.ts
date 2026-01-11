@@ -7,7 +7,7 @@
 // 型定義
 // ============================================
 
-export type KlingMode = 'image-to-video' | 'text-to-video'
+export type KlingMode = 'image-to-video' | 'text-to-video' | 'elements'
 export type KlingDuration = 5 | 10
 export type KlingModelVersion = '1.5' | '1.6' | '2.1' | '2.1-master' | '2.5' | '2.6'
 export type KlingQuality = 'standard' | 'pro'

@@ -219,11 +219,57 @@ export async function waitForCompletion(
   throw new Error('Kling video generation timed out')
 }
 
+// Elements生成開始（画像から要素を抽出して動画に追加）
+export async function generateElements(
+  request: Omit<KlingGenerationRequest, 'mode'> & { elementImages: string[] }
+): Promise<KlingTaskResponse> {
+  // Elementsは1.6必須
+  const modelVersion = '1.6'
+
+  if (!request.elementImages?.length || request.elementImages.length > 4) {
+    throw new Error('elementImages must contain 1-4 images')
+  }
+
+  const input: Record<string, unknown> = {
+    prompt: request.prompt,
+    negative_prompt: request.negativePrompt || '',
+    duration: request.duration || 5,
+    aspect_ratio: request.aspectRatio || '9:16',
+    mode: request.quality === 'pro' ? 'pro' : 'std',
+    version: modelVersion,
+    elements: request.elementImages.map(url => ({ image_url: url })),
+  }
+
+  const payload = {
+    model: 'kling',
+    task_type: 'video_generation',
+    input,
+  }
+
+  const response = await klingRequest<{ data: KlingTaskResponse }>(
+    '/api/v1/task',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  )
+
+  return response.data
+}
+
 // 統合生成関数
 export async function generateVideo(
-  request: KlingGenerationRequest
+  request: KlingGenerationRequest & { elementImages?: string[] }
 ): Promise<KlingTaskResponse> {
-  if (request.mode === 'image-to-video') {
+  if (request.mode === 'elements') {
+    if (!request.elementImages?.length) {
+      throw new Error('elementImages is required for elements mode')
+    }
+    return generateElements({
+      ...request,
+      elementImages: request.elementImages,
+    })
+  } else if (request.mode === 'image-to-video') {
     if (!request.imageUrl) {
       throw new Error('imageUrl is required for image-to-video mode')
     }

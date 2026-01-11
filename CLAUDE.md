@@ -75,6 +75,9 @@ npm run remotion:studio
 
 # E2Eテスト実行
 npx playwright test
+
+# Gemini 2.0で動画分析
+npx dotenv -e .env.local -- npx tsx scripts/analyze-video.ts <video_path>
 ```
 
 ### 環境変数
@@ -147,13 +150,14 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/lib/supabase/` | Supabaseクライアント |
 | `src/lib/queue/` | BullMQキュークライアント |
 | `src/lib/tiktok/` | TikTok APIクライアント |
-| `src/lib/image/` | 画像処理（sharp: リサイズ、WebP変換、サムネイル生成） |
+| `src/lib/image/` | 画像処理（sharp: リサイズ、WebP変換、サムネイル生成、**アスペクト比クロップ**） |
 | `src/lib/video/ffmpeg/` | FFmpeg動画処理（UGC加工、トリミング、結合、字幕、コーデック変換） |
 | `src/lib/video/pipeline.ts` | 動画処理パイプライン（Remotion→FFmpeg→最適化） |
 | `src/lib/video/variants.ts` | A/Bテスト用バリアント一括生成 |
 | `src/lib/video/heygen/` | HeyGen APIクライアント |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
+| `scripts/analyze-video.ts` | Gemini 2.0 Video API動画分析スクリプト |
 | `src/remotion/` | Remotionテンプレート |
 | `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
@@ -231,7 +235,10 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | エンドポイント | メソッド | 説明 |
 |----------------|----------|------|
 | `/api/videos/generate` | POST | 動画生成ジョブ作成 |
-| `/api/videos/kling` | POST | Kling AI動画生成 |
+| `/api/videos/kling` | POST | Kling AI動画生成（I2V/T2V、自動アスペクト比クロップ） |
+| `/api/videos/kling/extend` | POST | Kling動画延長（5秒→10秒） |
+| `/api/videos/kling/lip-sync` | POST/GET | Kling Lip Sync（音声同期） |
+| `/api/videos/kling/elements` | POST | Kling Elements（画像要素を動画に追加） |
 | `/api/videos/[id]/status` | GET | 動画生成進捗取得 |
 | `/api/videos/[id]/cancel` | POST | 動画生成キャンセル |
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
@@ -263,6 +270,10 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | デュアルキーフレーム | 開始/終了画像からAIが補間動画生成（O1コア機能） |
 | 音声生成 | 2.6モデルのみ対応 |
 | 動的価格 | モデル/品質/長さで自動計算表示 |
+| **自動クロップ** | I2V時、指定アスペクト比に画像を自動クロップ |
+| **Extend** | 5秒→10秒への動画延長 |
+| **Lip Sync** | 動画に音声を追加・同期（TTS/音声ファイル対応） |
+| **Elements** | 画像から要素を抽出して動画に合成（1-4枚対応） |
 
 **ファイル構成:**
 - `src/lib/video/kling/constants.ts` - 型定義・価格計算（クライアント用）

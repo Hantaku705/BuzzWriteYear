@@ -93,7 +93,7 @@ export interface KlingJobData {
   videoId: string
   userId: string
   productId: string
-  mode: 'image-to-video' | 'text-to-video'
+  mode: 'image-to-video' | 'text-to-video' | 'elements'  // elements追加
   imageUrl?: string
   imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
@@ -106,6 +106,8 @@ export interface KlingJobData {
   quality?: 'standard' | 'pro'
   cfgScale?: number
   enableAudio?: boolean           // 2.6のみ
+  // Elements固有パラメータ
+  elementImages?: string[]        // 1-4枚の要素画像URL
 }
 
 export interface PipelineJobData {

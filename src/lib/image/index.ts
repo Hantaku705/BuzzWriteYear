@@ -5,6 +5,7 @@ export {
   convertToWebP,
   resizeImage,
   cropToSquare,
+  cropToAspectRatio,
   addWatermark,
   DEFAULT_SIZES,
   type ImageSize,

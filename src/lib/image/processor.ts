@@ -176,6 +176,106 @@ export async function cropToSquare(
   }
 }
 
+/**
+ * アスペクト比に合わせて画像をクロップ
+ * Kling AI用: I2Vモードではアスペクト比が画像から推測されるため、
+ * 事前にクロップして目的のアスペクト比に調整する
+ */
+export async function cropToAspectRatio(
+  input: Buffer | Uint8Array,
+  aspectRatio: '9:16' | '16:9' | '1:1',
+  options: {
+    maxSize?: number  // 最大サイズ（幅または高さ）
+    quality?: number
+    format?: 'webp' | 'jpeg' | 'png'
+  } = {}
+): Promise<ProcessedImage> {
+  const { maxSize = 1280, quality = 90, format = 'webp' } = options
+
+  const metadata = await sharp(input).metadata()
+  const srcWidth = metadata.width || 1
+  const srcHeight = metadata.height || 1
+
+  // 目標アスペクト比を計算
+  let targetRatio: number
+  switch (aspectRatio) {
+    case '9:16':
+      targetRatio = 9 / 16  // 0.5625 (縦長)
+      break
+    case '16:9':
+      targetRatio = 16 / 9  // 1.777 (横長)
+      break
+    case '1:1':
+    default:
+      targetRatio = 1
+      break
+  }
+
+  const srcRatio = srcWidth / srcHeight
+
+  // クロップ領域を計算（中央クロップ）
+  let cropWidth: number
+  let cropHeight: number
+  let left: number
+  let top: number
+
+  if (srcRatio > targetRatio) {
+    // 元画像が横長すぎる → 左右をクロップ
+    cropHeight = srcHeight
+    cropWidth = Math.round(srcHeight * targetRatio)
+    left = Math.round((srcWidth - cropWidth) / 2)
+    top = 0
+  } else {
+    // 元画像が縦長すぎる → 上下をクロップ
+    cropWidth = srcWidth
+    cropHeight = Math.round(srcWidth / targetRatio)
+    left = 0
+    top = Math.round((srcHeight - cropHeight) / 2)
+  }
+
+  // 出力サイズを計算（maxSizeを超えないように）
+  let outputWidth: number
+  let outputHeight: number
+  if (aspectRatio === '9:16') {
+    outputHeight = Math.min(maxSize, cropHeight)
+    outputWidth = Math.round(outputHeight * targetRatio)
+  } else if (aspectRatio === '16:9') {
+    outputWidth = Math.min(maxSize, cropWidth)
+    outputHeight = Math.round(outputWidth / targetRatio)
+  } else {
+    outputWidth = outputHeight = Math.min(maxSize, Math.min(cropWidth, cropHeight))
+  }
+
+  let pipeline = sharp(input)
+    .extract({ left, top, width: cropWidth, height: cropHeight })
+    .resize(outputWidth, outputHeight, { fit: 'fill' })
+    .rotate() // EXIF回転を適用
+
+  // 出力フォーマット
+  switch (format) {
+    case 'webp':
+      pipeline = pipeline.webp({ quality })
+      break
+    case 'jpeg':
+      pipeline = pipeline.jpeg({ quality, mozjpeg: true })
+      break
+    case 'png':
+      pipeline = pipeline.png({ compressionLevel: 9 })
+      break
+  }
+
+  const buffer = await pipeline.toBuffer()
+  const outputMetadata = await sharp(buffer).metadata()
+
+  return {
+    buffer,
+    format,
+    width: outputMetadata.width || outputWidth,
+    height: outputMetadata.height || outputHeight,
+    size: buffer.length,
+  }
+}
+
 export async function addWatermark(
   input: Buffer | Uint8Array,
   watermarkText: string,

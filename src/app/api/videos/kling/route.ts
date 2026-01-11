@@ -1,7 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { addKlingJob } from '@/lib/queue/client'
+import { cropToAspectRatio, getImageMetadata } from '@/lib/image'
 import { z } from 'zod'
+
+// 画像をURLから取得してクロップし、Supabase Storageにアップロード
+async function fetchCropAndUpload(
+  imageUrl: string,
+  targetAspectRatio: '9:16' | '16:9' | '1:1',
+  supabase: ReturnType<typeof import('@/lib/supabase/server').createClient> extends Promise<infer T> ? T : never,
+  userId: string
+): Promise<string> {
+  // 画像をフェッチ
+  const response = await fetch(imageUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image: ${response.status}`)
+  }
+  const arrayBuffer = await response.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+
+  // メタデータ取得
+  const metadata = await getImageMetadata(buffer)
+  const srcRatio = metadata.width / metadata.height
+
+  // 目標アスペクト比を計算
+  let targetRatio: number
+  switch (targetAspectRatio) {
+    case '9:16':
+      targetRatio = 9 / 16
+      break
+    case '16:9':
+      targetRatio = 16 / 9
+      break
+    case '1:1':
+    default:
+      targetRatio = 1
+      break
+  }
+
+  // アスペクト比が近い場合（±5%）はクロップ不要
+  const ratioTolerance = 0.05
+  if (Math.abs(srcRatio - targetRatio) / targetRatio < ratioTolerance) {
+    return imageUrl // 元のURLをそのまま返す
+  }
+
+  // クロップ実行
+  const cropped = await cropToAspectRatio(buffer, targetAspectRatio, {
+    maxSize: 1920, // Kling推奨: 最低300px、最大10MB
+    quality: 90,
+    format: 'jpeg', // PiAPIはJPEGを推奨
+  })
+
+  // Supabase Storageにアップロード
+  const fileName = `kling-input/${userId}/${Date.now()}-${targetAspectRatio.replace(':', 'x')}.jpg`
+  const { error: uploadError } = await supabase.storage
+    .from('videos')
+    .upload(fileName, cropped.buffer, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    })
+
+  if (uploadError) {
+    throw new Error(`Failed to upload cropped image: ${uploadError.message}`)
+  }
+
+  // 公開URLを取得
+  const { data: { publicUrl } } = supabase.storage
+    .from('videos')
+    .getPublicUrl(fileName)
+
+  return publicUrl
+}
 
 const klingGenerateSchema = z.object({
   productId: z.string().uuid(),
@@ -90,6 +159,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Image-to-Video: アスペクト比に合わせて画像をクロップ
+    let processedImageUrl = imageUrl
+    let processedTailUrl = imageTailUrl
+    if (mode === 'image-to-video' && imageUrl) {
+      try {
+        processedImageUrl = await fetchCropAndUpload(imageUrl, aspectRatio, supabase, user.id)
+        console.log(`[Kling] Image cropped to ${aspectRatio}: ${processedImageUrl}`)
+
+        // 終了フレームもクロップ
+        if (imageTailUrl) {
+          processedTailUrl = await fetchCropAndUpload(imageTailUrl, aspectRatio, supabase, user.id)
+          console.log(`[Kling] Tail image cropped to ${aspectRatio}: ${processedTailUrl}`)
+        }
+      } catch (cropError) {
+        console.error('[Kling] Image crop error:', cropError)
+        // クロップ失敗時は元のURLを使用（PiAPIがアスペクト比を推測）
+      }
+    }
+
     // 商品存在チェック
     const { data: product, error: productError } = await supabase
       .from('products')
@@ -141,14 +229,14 @@ export async function POST(request: NextRequest) {
 
     const video = videoData as { id: string; title: string; status: string }
 
-    // キューにジョブ追加
+    // キューにジョブ追加（クロップ済みのURLを使用）
     const job = await addKlingJob({
       videoId: video.id,
       userId: user.id,
       productId,
       mode,
-      imageUrl: imageUrl || (product as { images: string[] }).images?.[0],
-      imageTailUrl,
+      imageUrl: processedImageUrl || (product as { images: string[] }).images?.[0],
+      imageTailUrl: processedTailUrl,
       prompt,
       negativePrompt,
       duration,
