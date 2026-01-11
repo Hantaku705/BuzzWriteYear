@@ -148,6 +148,13 @@
   - クイック生成ボタン（1クリック生成）
   - 連続生成モード（完了後自動で次へ）
   - 一括削除機能（複数選択→一括削除）
+- [x] **Kling O1 自然言語組み合わせUI実装（セッション28）**
+  - Kling公式O1の@タグ組み合わせUIを実装
+  - 4つのメインタブ対応（画像/主体参考、プロンプト変換、動画参考、フレーム）
+  - タグ色分け（青=主体、緑=画像、紫=動画）
+  - @メンション入力（サジェストポップアップ付き）
+  - タブ別APIエンドポイントルーティング
+  - 新規ファイル8件、修正1件
 
 ### 作業中のタスク
 - なし
@@ -192,7 +199,20 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
+M package-lock.json
+M package.json
+M src/app/(dashboard)/videos/page.tsx
+M src/components/video/VideoGenerateModal.tsx
+M src/hooks/useVideos.ts
+M src/lib/api/videos.ts
 ?? howtokling.md
+?? src/components/ui/checkbox.tsx
+?? src/components/ui/popover.tsx
+?? src/components/ui/switch.tsx
+?? src/components/video/kling/
+?? src/lib/video/kling/o1-converter.ts
+?? src/lib/video/kling/tags.ts
+?? src/store/
 ```
 
 ## 最新コミット
@@ -201,6 +221,40 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション28）
+- **Kling O1 自然言語組み合わせUI実装**
+  - Kling公式のO1 UIを参考に、@タグで画像/動画/主体を組み合わせるUIを実装
+  - 例: `@ピザメガネ をかけた @怒った子供 は @雪原 で...`
+- **4つのメインタブ対応**
+  - 画像/主体参考: Elements API（最大7枚の画像組み合わせ）
+  - プロンプト変換: V2V Edit API（動画を自然言語で編集）
+  - 動画参考: Motion Reference API（カメラワーク/動き参照）
+  - フレーム: Dual Keyframe（開始/終了画像補間）
+- **タグシステム実装**
+  - TagType: subject（青）, image（緑）, video（紫）
+  - ドラッグ&ドロップ + URL入力対応
+  - サムネイルプレビュー、編集可能なタグ名
+- **@メンション入力**
+  - @入力でサジェストポップアップ表示
+  - キーボードナビゲーション（Arrow, Enter, Tab, Escape）
+  - 色分けプレビュー表示
+- **新規ファイル作成**
+  - `src/lib/video/kling/tags.ts` - 型定義、タブ設定、色設定
+  - `src/lib/video/kling/o1-converter.ts` - タブ別APIパラメータ変換
+  - `src/components/video/kling/O1Tabs.tsx` - 4タブナビゲーション
+  - `src/components/video/kling/TagThumbnail.tsx` - タグサムネイル
+  - `src/components/video/kling/TagGallery.tsx` - タグギャラリー
+  - `src/components/video/kling/MentionTextarea.tsx` - @メンション入力
+  - `src/components/video/kling/UploadZones.tsx` - 画像/動画アップロード
+  - `src/components/ui/popover.tsx` - shadcn/ui追加
+- **KlingAdvancedModal.tsx修正**
+  - `o1-combined`モード追加
+  - O1専用State追加（activeO1Tab, o1Tags, o1Prompt等）
+  - O1モード選択カード（推奨バッジ付き）
+  - タブ別UI表示
+- **ビルド成功**
+  - `npm run build` 完了
 
 ### 2026-01-11（セッション27）
 - **ヘビーユーザー向けUX改善実装**
