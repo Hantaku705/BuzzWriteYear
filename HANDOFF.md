@@ -155,6 +155,13 @@
   - @メンション入力（サジェストポップアップ付き）
   - タブ別APIエンドポイントルーティング
   - 新規ファイル8件、修正1件
+- [x] **/generate 専用ページ作成（セッション29）**
+  - Kling AI公式UIを完全模倣した動画生成専用ページ
+  - フルスクリーンレイアウト（左:入力パネル、右:プレビュー）
+  - 4モードタブ（テキストから動画へ、画像から動画へ、モーションコントロール、エレメンツ）
+  - スタンドアロン生成対応（productIdオプション化）
+  - Supabase Storage画像アップロード統合
+  - 生成進捗ポーリング・動画プレビュー
 
 ### 作業中のタスク
 - なし
@@ -199,28 +206,42 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M package-lock.json
-M package.json
-M src/app/(dashboard)/videos/page.tsx
-M src/components/video/VideoGenerateModal.tsx
-M src/hooks/useVideos.ts
-M src/lib/api/videos.ts
 ?? howtokling.md
-?? src/components/ui/checkbox.tsx
-?? src/components/ui/popover.tsx
-?? src/components/ui/switch.tsx
-?? src/components/video/kling/
-?? src/lib/video/kling/o1-converter.ts
-?? src/lib/video/kling/tags.ts
-?? src/store/
 ```
 
 ## 最新コミット
 ```
-6b13be2 feat(ux): add heavy user productivity features
+9320fcb feat(generate): connect /generate page to Kling API
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション29）
+- **/generate 専用ページ作成（Kling AI UI模倣）**
+  - ユーザー要望: 「動画生成画面は別のページで作って欲しい。kling aiのようなuiを意識して完全に真似てください」
+  - Kling AI公式のスクリーンショット（5枚）を参考に実装
+- **ページ構成**
+  - `/generate` route group: フルスクリーンレイアウト（サイドバー・ヘッダーなし）
+  - `GenerateSidebar.tsx`: Kling風アイコンナビゲーション
+  - `GenerateInputPanel.tsx`: 4モードタブ、画像アップロード、設定
+  - `GeneratePreviewPanel.tsx`: 動画プレビュー、生成進捗表示
+- **4つのモードタブ**
+  - テキストから動画へ（Text-to-Video）
+  - 画像から動画へ（Image-to-Video）
+  - モーションコントロール
+  - エレメンツ
+- **API接続**
+  - `useKlingGenerate`フックでスタンドアロン生成
+  - `useVideoStatus`フックで進捗ポーリング
+  - `productId`をオプション化（商品なしでも生成可能）
+- **型エラー修正**
+  - `useVideoStatus`のrefetchIntervalオプション修正
+  - `videoStatus.remoteUrl`フィールド名修正（snake_case→camelCase）
+  - `KlingJobData.productId`をオプショナルに変更
+- **コミット**
+  - `9320fcb feat(generate): connect /generate page to Kling API`
+- **デプロイ**
+  - https://buzzwriteyear.vercel.app/generate
 
 ### 2026-01-11（セッション28）
 - **Kling O1 自然言語組み合わせUI実装**

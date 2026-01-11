@@ -134,6 +134,8 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | ファイル | 役割 |
 |----------|------|
 | `src/app/(dashboard)/` | ダッシュボードページ群 |
+| `src/app/(generate)/` | **動画生成専用ページ（Kling AI風UI）** |
+| `src/components/generate/` | **動画生成コンポーネント（GenerateSidebar, GenerateInputPanel, GeneratePreviewPanel）** |
 | `src/app/api/videos/generate/` | 動画生成APIエンドポイント |
 | `src/app/api/tiktok/` | TikTok OAuth APIエンドポイント |
 | `src/components/layout/` | Sidebar, Header |
