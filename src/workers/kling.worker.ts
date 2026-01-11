@@ -13,6 +13,12 @@ import {
 } from '@/lib/queue/client'
 import {
   generateVideo,
+  generateMotionRef,
+  generateCameraControl,
+  generateV2VEdit,
+  generateStyleTransfer,
+  generateInpaint,
+  generateBackgroundReplace,
   waitForCompletion,
   downloadVideo,
 } from '@/lib/video/kling/client'
@@ -136,20 +142,104 @@ function getProgressMessage(progress: number): string {
   return 'アップロード中...'
 }
 
+// モードに応じた生成関数を呼び出す
+async function callGenerationAPI(job: Job<KlingJobData>) {
+  const data = job.data
+  const { mode } = data
+
+  switch (mode) {
+    case 'motion-ref':
+      return generateMotionRef({
+        imageUrl: data.imageUrl!,
+        prompt: data.prompt,
+        motionPresetId: data.motionPresetId,
+        motionVideoUrl: data.motionVideoUrl,
+        motionStrength: data.motionStrength,
+        duration: data.duration,
+        aspectRatio: data.aspectRatio,
+        quality: data.quality,
+        modelVersion: data.modelVersion,
+      })
+
+    case 'camera-control':
+      return generateCameraControl({
+        imageUrl: data.imageUrl!,
+        prompt: data.prompt,
+        cameraPresetId: data.cameraPresetId,
+        cameraReferenceVideoUrl: data.cameraReferenceVideoUrl,
+        cameraControls: data.cameraControls,
+        duration: data.duration,
+        aspectRatio: data.aspectRatio,
+        quality: data.quality,
+        modelVersion: data.modelVersion,
+      })
+
+    case 'video-edit':
+      return generateV2VEdit({
+        originTaskId: data.originTaskId!,
+        editPrompt: data.editPrompt!,
+        strength: data.editStrength,
+      })
+
+    case 'style-transfer':
+      return generateStyleTransfer({
+        originTaskId: data.originTaskId!,
+        stylePresetId: data.stylePresetId,
+        styleImageUrl: data.styleImageUrl,
+        customPrompt: data.prompt,
+        strength: data.editStrength,
+      })
+
+    case 'inpaint':
+      return generateInpaint({
+        originTaskId: data.originTaskId!,
+        removePrompt: data.removePrompt!,
+      })
+
+    case 'background':
+      return generateBackgroundReplace({
+        originTaskId: data.originTaskId!,
+        backgroundPresetId: data.backgroundPresetId,
+        backgroundPrompt: data.backgroundPrompt,
+        backgroundImageUrl: data.backgroundImageUrl,
+      })
+
+    case 'image-to-video':
+    case 'text-to-video':
+    case 'elements':
+    default:
+      // プリセットからネガティブプロンプトを取得
+      const preset = data.presetId ? getPreset(data.presetId) : undefined
+      const finalNegativePrompt =
+        data.negativePrompt || preset?.negativePrompt || 'blurry, low quality, distorted'
+
+      return generateVideo({
+        mode: mode as 'image-to-video' | 'text-to-video' | 'elements',
+        prompt: data.prompt,
+        imageUrl: data.imageUrl,
+        imageTailUrl: data.imageTailUrl,
+        negativePrompt: finalNegativePrompt,
+        duration: data.duration,
+        aspectRatio: data.aspectRatio || '9:16',
+        quality: data.quality,
+        modelVersion: data.modelVersion,
+        cfgScale: data.cfgScale,
+        enableAudio: data.enableAudio,
+        elementImages: data.elementImages,
+      })
+  }
+}
+
 // ジョブ処理関数
 async function processKlingJob(job: Job<KlingJobData>) {
   const {
     videoId,
     userId,
     mode,
-    imageUrl,
-    prompt,
-    negativePrompt,
     duration,
-    presetId,
   } = job.data
 
-  console.log(`[Kling Worker] Starting job ${job.id} for video ${videoId}`)
+  console.log(`[Kling Worker] Starting job ${job.id} for video ${videoId} (mode: ${mode})`)
 
   try {
     // キャンセル済みかチェック
@@ -164,23 +254,11 @@ async function processKlingJob(job: Job<KlingJobData>) {
       progress_message: 'リクエストを送信中...',
     })
 
-    // プリセットからネガティブプロンプトを取得
-    const preset = presetId ? getPreset(presetId) : undefined
-    const finalNegativePrompt =
-      negativePrompt || preset?.negativePrompt || 'blurry, low quality, distorted'
-
     // Kling APIで動画生成を開始
     console.log(`[Kling Worker] Calling Kling API - mode: ${mode}`)
     await updateVideoProgress(videoId, 10, 'AI処理待機中...')
 
-    const taskResponse = await generateVideo({
-      mode,
-      prompt,
-      imageUrl,
-      negativePrompt: finalNegativePrompt,
-      duration,
-      aspectRatio: '9:16', // TikTok縦型
-    })
+    const taskResponse = await callGenerationAPI(job)
 
     console.log(`[Kling Worker] Task created: ${taskResponse.task_id}`)
 

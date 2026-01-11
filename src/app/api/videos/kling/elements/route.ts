@@ -17,8 +17,8 @@ const elementsSchema = z.object({
   duration: z.enum(['5', '10']).transform(v => parseInt(v) as 5 | 10),
   aspectRatio: z.enum(['16:9', '9:16', '1:1']).default('9:16'),
   quality: z.enum(['standard', 'pro']).default('standard'),
-  // Elements: 1-4枚の画像URL
-  elementImages: z.array(z.string().url()).min(1).max(4),
+  // Elements: 1-7枚の画像URL（O1で7枚対応）
+  elementImages: z.array(z.string().url()).min(1).max(7),
 })
 
 export async function POST(request: NextRequest) {

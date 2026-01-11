@@ -7,7 +7,16 @@
 // 型定義
 // ============================================
 
-export type KlingMode = 'image-to-video' | 'text-to-video' | 'elements'
+export type KlingMode =
+  | 'image-to-video'
+  | 'text-to-video'
+  | 'elements'
+  | 'video-edit'       // V2V自然言語編集
+  | 'style-transfer'   // スタイル変換
+  | 'inpaint'          // オブジェクト削除
+  | 'background'       // 背景変更
+  | 'motion-ref'       // モーション参照
+  | 'camera-control'   // カメラ制御
 export type KlingDuration = 5 | 10
 export type KlingModelVersion = '1.5' | '1.6' | '2.1' | '2.1-master' | '2.5' | '2.6'
 export type KlingQuality = 'standard' | 'pro'
@@ -47,6 +56,78 @@ export interface KlingTaskStatusResponse {
   error?: string
   created_at?: string
   completed_at?: string
+}
+
+// ============================================
+// O1 Advanced機能 型定義
+// ============================================
+
+// Elements最大枚数（4→7に拡張）
+export const MAX_ELEMENT_IMAGES = 7
+
+// カメラ制御
+export interface CameraControl {
+  type: 'pan' | 'tilt' | 'zoom' | 'roll' | 'truck' | 'dolly'
+  direction?: 'left' | 'right' | 'up' | 'down' | 'in' | 'out' | 'cw' | 'ccw'
+  speed?: 'slow' | 'medium' | 'fast'
+  amount?: number  // 0-100
+}
+
+// V2V編集リクエスト
+export interface KlingV2VEditRequest {
+  originTaskId: string       // 元のKlingタスクID
+  editPrompt: string         // 編集指示（自然言語）
+  strength?: number          // 0.0-1.0
+}
+
+// スタイル変換リクエスト
+export interface KlingStyleTransferRequest {
+  originTaskId: string       // 元のKlingタスクID
+  stylePresetId?: string     // プリセットID
+  styleImageUrl?: string     // スタイル参照画像URL
+  customPrompt?: string      // カスタムスタイルプロンプト
+  strength?: number          // 0.0-1.0
+}
+
+// オブジェクト削除（Inpaint）リクエスト
+export interface KlingInpaintRequest {
+  originTaskId: string       // 元のKlingタスクID
+  removePrompt: string       // 削除対象（自然言語）
+  maskImageUrl?: string      // マスク画像（将来用）
+}
+
+// 背景変更リクエスト
+export interface KlingBackgroundReplaceRequest {
+  originTaskId: string       // 元のKlingタスクID
+  backgroundPresetId?: string // 背景プリセットID
+  backgroundPrompt?: string  // 背景テキスト指定
+  backgroundImageUrl?: string // 背景参照画像URL
+}
+
+// モーション参照リクエスト
+export interface KlingMotionRefRequest {
+  imageUrl: string           // ソース画像
+  prompt: string             // プロンプト
+  motionPresetId?: string    // モーションプリセットID
+  motionVideoUrl?: string    // 参照動画URL
+  motionStrength?: number    // 0.0-1.0
+  duration?: KlingDuration
+  aspectRatio?: KlingAspectRatio
+  quality?: KlingQuality
+  modelVersion?: KlingModelVersion
+}
+
+// カメラ制御リクエスト
+export interface KlingCameraControlRequest {
+  imageUrl: string           // ソース画像
+  prompt: string             // プロンプト
+  cameraPresetId?: string    // カメラプリセットID
+  cameraReferenceVideoUrl?: string // 参照動画URL
+  cameraControls?: CameraControl[] // 手動カメラ制御
+  duration?: KlingDuration
+  aspectRatio?: KlingAspectRatio
+  quality?: KlingQuality
+  modelVersion?: KlingModelVersion
 }
 
 // ============================================

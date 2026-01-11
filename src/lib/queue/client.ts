@@ -93,7 +93,16 @@ export interface KlingJobData {
   videoId: string
   userId: string
   productId: string
-  mode: 'image-to-video' | 'text-to-video' | 'elements'  // elements追加
+  mode:
+    | 'image-to-video'
+    | 'text-to-video'
+    | 'elements'
+    | 'video-edit'       // V2V自然言語編集
+    | 'style-transfer'   // スタイル変換
+    | 'inpaint'          // オブジェクト削除
+    | 'background'       // 背景変更
+    | 'motion-ref'       // モーション参照
+    | 'camera-control'   // カメラ制御
   imageUrl?: string
   imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
@@ -107,7 +116,43 @@ export interface KlingJobData {
   cfgScale?: number
   enableAudio?: boolean           // 2.6のみ
   // Elements固有パラメータ
-  elementImages?: string[]        // 1-4枚の要素画像URL
+  elementImages?: string[]        // 最大7枚の要素画像URL
+
+  // ============================================
+  // O1 Advanced機能パラメータ
+  // ============================================
+
+  // V2V編集用
+  originTaskId?: string           // 元のKlingタスクID
+  editPrompt?: string             // 編集指示（自然言語）
+  editStrength?: number           // 0.0-1.0
+
+  // スタイル変換用
+  stylePresetId?: string          // スタイルプリセットID
+  styleImageUrl?: string          // スタイル参照画像URL
+
+  // Inpaint用
+  removePrompt?: string           // 削除対象（自然言語）
+
+  // 背景変更用
+  backgroundPresetId?: string     // 背景プリセットID
+  backgroundPrompt?: string       // 背景テキスト指定
+  backgroundImageUrl?: string     // 背景参照画像URL
+
+  // モーション参照用
+  motionPresetId?: string         // モーションプリセットID
+  motionVideoUrl?: string         // 参照動画URL
+  motionStrength?: number         // 0.0-1.0
+
+  // カメラ制御用
+  cameraPresetId?: string         // カメラプリセットID
+  cameraReferenceVideoUrl?: string // 参照動画URL
+  cameraControls?: Array<{
+    type: 'pan' | 'tilt' | 'zoom' | 'roll' | 'truck' | 'dolly'
+    direction?: 'left' | 'right' | 'up' | 'down' | 'in' | 'out' | 'cw' | 'ccw'
+    speed?: 'slow' | 'medium' | 'fast'
+    amount?: number
+  }>
 }
 
 export interface PipelineJobData {
