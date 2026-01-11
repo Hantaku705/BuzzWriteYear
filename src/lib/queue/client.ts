@@ -92,7 +92,7 @@ export interface HeyGenJobData {
 export interface KlingJobData {
   videoId: string
   userId: string
-  productId: string
+  productId?: string  // Optional for standalone generation
   mode:
     | 'image-to-video'
     | 'text-to-video'

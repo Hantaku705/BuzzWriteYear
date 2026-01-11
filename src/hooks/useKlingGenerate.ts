@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
 
 export interface KlingGenerateParams {
-  productId: string
+  productId?: string  // Now optional for standalone generation
   mode: 'image-to-video' | 'text-to-video'
   imageUrl?: string
   imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）

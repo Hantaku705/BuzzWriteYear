@@ -82,7 +82,7 @@ async function fetchCropAndUpload(
 }
 
 const klingGenerateSchema = z.object({
-  productId: z.string().uuid(),
+  productId: z.string().uuid().optional(), // Now optional for standalone generation
   mode: z.enum(['image-to-video', 'text-to-video']),
   imageUrl: z.string().url().optional(),
   imageTailUrl: z.string().url().optional(),  // O1デュアルキーフレーム
@@ -196,19 +196,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 商品存在チェック
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('id, name, images')
-      .eq('id', productId)
-      .eq('user_id', user.id)
-      .single()
+    // 商品存在チェック（productIdが指定されている場合のみ）
+    let product: { id: string; name: string; images: string[] } | null = null
+    if (productId) {
+      const { data: productData, error: productError } = await supabase
+        .from('products')
+        .select('id, name, images')
+        .eq('id', productId)
+        .eq('user_id', user.id)
+        .single()
 
-    if (productError || !product) {
-      return NextResponse.json(
-        { error: 'Product not found' },
-        { status: 404 }
-      )
+      if (productError || !productData) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        )
+      }
+      product = productData as { id: string; name: string; images: string[] }
     }
 
     // generation_config を作成
@@ -226,7 +230,7 @@ export async function POST(request: NextRequest) {
       .from('videos')
       .insert({
         user_id: user.id,
-        product_id: productId,
+        product_id: productId || null, // Allow null for standalone generation
         title,
         content_type: 'ai_generated',
         generation_method: 'kling',
@@ -248,12 +252,21 @@ export async function POST(request: NextRequest) {
     const video = videoData as { id: string; title: string; status: string }
 
     // キューにジョブ追加（クロップ済みのURLを使用）
+    // Image-to-VideoモードではprocessedImageUrlが必須
+    const finalImageUrl = processedImageUrl || product?.images?.[0]
+    if (mode === 'image-to-video' && !finalImageUrl) {
+      return NextResponse.json(
+        { error: 'Image URL is required for image-to-video mode' },
+        { status: 400 }
+      )
+    }
+
     const job = await addKlingJob({
       videoId: video.id,
       userId: user.id,
-      productId,
+      ...(productId && { productId }),
       mode,
-      imageUrl: processedImageUrl || (product as { images: string[] }).images?.[0],
+      imageUrl: finalImageUrl,
       imageTailUrl: processedTailUrl,
       prompt,
       negativePrompt,

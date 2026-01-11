@@ -18,24 +18,32 @@ import {
   Move,
   RefreshCw,
   ImagePlus,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
+import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
 
 type ModeType = 'text-to-video' | 'image-to-video' | 'motion-control' | 'elements'
-
-interface Tag {
-  id: string
-  type: 'subject' | 'image' | 'video'
-  name: string
-  thumbnail?: string
-}
 
 interface GenerateInputPanelProps {
   prompt: string
   setPrompt: (prompt: string) => void
   isGenerating: boolean
-  onGenerate: () => void
+  generationProgress?: number
+  onGenerate: (params: {
+    mode: 'image-to-video' | 'text-to-video'
+    imageUrl?: string
+    imageTailUrl?: string
+    prompt: string
+    modelVersion: KlingModelVersion
+    aspectRatio: KlingAspectRatio
+    quality: KlingQuality
+    duration: 5 | 10
+    enableAudio?: boolean
+  }) => void
 }
 
 const modes = [
@@ -45,55 +53,147 @@ const modes = [
   { id: 'elements' as ModeType, name: 'エレメンツ', icon: Layers },
 ]
 
-const modelOptions = [
-  { id: 'kling-2.6', name: '動画 2.6', badge: 'Audio', hasAudio: true },
-  { id: 'kling-2.5', name: '動画 2.5 Turbo' },
-  { id: 'kling-2.1', name: '動画 2.1' },
-  { id: 'kling-o1', name: '動画 O1', badge: 'NEW' },
-  { id: 'kling-1.6', name: '動画 1.6' },
-  { id: 'kling-1.5', name: '動画 1.5' },
+const modelOptions: { id: KlingModelVersion; name: string; badge?: string; hasAudio?: boolean }[] = [
+  { id: '2.6', name: '動画 2.6', badge: 'Audio', hasAudio: true },
+  { id: '2.5', name: '動画 2.5 Turbo' },
+  { id: '2.1', name: '動画 2.1' },
+  { id: '1.6', name: '動画 1.6' },
+  { id: '1.5', name: '動画 1.5' },
 ]
 
-const qualityOptions = [
-  { id: 'high', name: '高品質モード', badge: 'VIP' },
+const qualityOptions: { id: KlingQuality; name: string; badge?: string }[] = [
+  { id: 'pro', name: '高品質モード', badge: 'VIP' },
   { id: 'standard', name: '標準' },
 ]
 
-const durationOptions = ['5s', '10s']
-const countOptions = ['1本', '2本', '4本']
+const durationOptions: { value: 5 | 10; label: string }[] = [
+  { value: 5, label: '5s' },
+  { value: 10, label: '10s' },
+]
+
+const aspectOptions: { value: KlingAspectRatio; label: string }[] = [
+  { value: '9:16', label: '9:16' },
+  { value: '16:9', label: '16:9' },
+  { value: '1:1', label: '1:1' },
+]
 
 export function GenerateInputPanel({
   prompt,
   setPrompt,
   isGenerating,
+  generationProgress,
   onGenerate,
 }: GenerateInputPanelProps) {
   const [activeMode, setActiveMode] = useState<ModeType>('image-to-video')
-  const [model, setModel] = useState('kling-2.6')
-  const [quality, setQuality] = useState('high')
-  const [duration, setDuration] = useState('5s')
-  const [count, setCount] = useState('1本')
+  const [model, setModel] = useState<KlingModelVersion>('2.6')
+  const [quality, setQuality] = useState<KlingQuality>('pro')
+  const [duration, setDuration] = useState<5 | 10>(5)
+  const [aspect, setAspect] = useState<KlingAspectRatio>('9:16')
   const [showModelDropdown, setShowModelDropdown] = useState(false)
   const [showQualityDropdown, setShowQualityDropdown] = useState(false)
   const [enableAudioSync, setEnableAudioSync] = useState(true)
   const [startFrame, setStartFrame] = useState<string | null>(null)
+  const [startFrameUrl, setStartFrameUrl] = useState<string | null>(null)
   const [endFrame, setEndFrame] = useState<string | null>(null)
-  const [voiceTag, setVoiceTag] = useState<string | null>(null)
+  const [endFrameUrl, setEndFrameUrl] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const startFrameRef = useRef<HTMLInputElement>(null)
   const endFrameRef = useRef<HTMLInputElement>(null)
 
   const selectedModel = modelOptions.find((m) => m.id === model)
 
-  const handleFileUpload = useCallback((
+  // Upload image to Supabase Storage
+  const uploadImage = useCallback(async (file: File): Promise<string> => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      throw new Error('ログインが必要です')
+    }
+
+    const fileName = `generate/${user.id}/${Date.now()}-${file.name}`
+    const { error: uploadError } = await supabase.storage
+      .from('videos')
+      .upload(fileName, file, {
+        contentType: file.type,
+        upsert: true,
+      })
+
+    if (uploadError) {
+      throw new Error(`アップロードに失敗しました: ${uploadError.message}`)
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('videos')
+      .getPublicUrl(fileName)
+
+    return publicUrl
+  }, [])
+
+  const handleFileUpload = useCallback(async (
     e: React.ChangeEvent<HTMLInputElement>,
-    setImage: (url: string | null) => void
+    setPreview: (url: string | null) => void,
+    setUrl: (url: string | null) => void
   ) => {
     const file = e.target.files?.[0]
-    if (file) {
-      setImage(URL.createObjectURL(file))
+    if (!file) return
+
+    // Set preview immediately
+    setPreview(URL.createObjectURL(file))
+    setIsUploading(true)
+
+    try {
+      const uploadedUrl = await uploadImage(file)
+      setUrl(uploadedUrl)
+    } catch (error) {
+      console.error('Upload error:', error)
+      setPreview(null)
+      setUrl(null)
+    } finally {
+      setIsUploading(false)
     }
+
     e.target.value = ''
-  }, [])
+  }, [uploadImage])
+
+  const handleGenerate = useCallback(() => {
+    if (activeMode === 'image-to-video') {
+      if (!startFrameUrl) {
+        return
+      }
+      onGenerate({
+        mode: 'image-to-video',
+        imageUrl: startFrameUrl,
+        imageTailUrl: endFrameUrl || undefined,
+        prompt: prompt || 'AI generated video',
+        modelVersion: model,
+        aspectRatio: aspect,
+        quality,
+        duration,
+        enableAudio: model === '2.6' ? enableAudioSync : undefined,
+      })
+    } else if (activeMode === 'text-to-video') {
+      if (!prompt) {
+        return
+      }
+      onGenerate({
+        mode: 'text-to-video',
+        prompt,
+        modelVersion: model,
+        aspectRatio: aspect,
+        quality,
+        duration,
+        enableAudio: model === '2.6' ? enableAudioSync : undefined,
+      })
+    }
+  }, [activeMode, startFrameUrl, endFrameUrl, prompt, model, aspect, quality, duration, enableAudioSync, onGenerate])
+
+  const canGenerate = () => {
+    if (isGenerating || isUploading) return false
+    if (activeMode === 'image-to-video') return !!startFrameUrl
+    if (activeMode === 'text-to-video') return !!prompt
+    return false
+  }
 
   return (
     <div className="flex flex-col w-[520px] border-r border-zinc-800 bg-zinc-900">
@@ -179,6 +279,7 @@ export function GenerateInputPanel({
               <div className="flex-1">
                 <button
                   onClick={() => startFrameRef.current?.click()}
+                  disabled={isUploading}
                   className={cn(
                     'w-full aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all',
                     startFrame
@@ -189,10 +290,16 @@ export function GenerateInputPanel({
                   {startFrame ? (
                     <div className="relative w-full h-full">
                       <img src={startFrame} alt="" className="w-full h-full object-cover rounded-lg" />
+                      {isUploading && !startFrameUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                          <Loader2 className="h-8 w-8 text-white animate-spin" />
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setStartFrame(null)
+                          setStartFrameUrl(null)
                         }}
                         className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70"
                       >
@@ -211,7 +318,7 @@ export function GenerateInputPanel({
                   ref={startFrameRef}
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, setStartFrame)}
+                  onChange={(e) => handleFileUpload(e, setStartFrame, setStartFrameUrl)}
                   className="hidden"
                 />
               </div>
@@ -227,6 +334,7 @@ export function GenerateInputPanel({
               <div className="flex-1">
                 <button
                   onClick={() => endFrameRef.current?.click()}
+                  disabled={isUploading}
                   className={cn(
                     'w-full aspect-video flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all',
                     endFrame
@@ -237,10 +345,16 @@ export function GenerateInputPanel({
                   {endFrame ? (
                     <div className="relative w-full h-full">
                       <img src={endFrame} alt="" className="w-full h-full object-cover rounded-lg" />
+                      {isUploading && !endFrameUrl && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                          <Loader2 className="h-8 w-8 text-white animate-spin" />
+                        </div>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           setEndFrame(null)
+                          setEndFrameUrl(null)
                         }}
                         className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70"
                       >
@@ -250,8 +364,8 @@ export function GenerateInputPanel({
                   ) : (
                     <>
                       <ImagePlus className="h-8 w-8 text-zinc-600 mb-2" />
-                      <span className="text-sm text-zinc-500">音画同期機能：エンドフレーム</span>
-                      <span className="text-xs text-zinc-600">は非対応</span>
+                      <span className="text-sm text-zinc-500">エンドフレーム（任意）</span>
+                      <span className="text-xs text-zinc-600">O1デュアルキーフレーム</span>
                     </>
                   )}
                 </button>
@@ -259,52 +373,67 @@ export function GenerateInputPanel({
                   ref={endFrameRef}
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleFileUpload(e, setEndFrame)}
+                  onChange={(e) => handleFileUpload(e, setEndFrame, setEndFrameUrl)}
                   className="hidden"
                 />
               </div>
             </div>
 
-            {/* Description */}
-            <p className="text-xs text-zinc-500 leading-relaxed">
-              キャラクターのセリフ・歌唱内容は「」で囲み、話し手の直後に @音色 を付けて、音声をより確実に結びつけてください。例：司会者 @温かい女性の声 が「遠くの星を見て」と言う。現在、中国語と英語のテキストで最適な効果が得られます。
-              <span className="text-emerald-500 hover:underline cursor-pointer ml-1">
-                動画 2.6 機能マニュアル
-              </span>
-              をクリックして、より多くのプロンプト作成テクニックを学びましょう。
-            </p>
-
-            {/* Voice Tag */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-lg">
-                <Volume2 className="h-4 w-4 text-pink-400" />
-                <span className="text-sm text-zinc-300">@音色を選択</span>
-              </div>
-              <div className="flex-1" />
-              <span className="text-xs text-zinc-600">DeepSeek</span>
+            {/* Prompt Input for Image-to-Video */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">プロンプト（任意）</label>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="動画の動きや雰囲気を説明..."
+                className="w-full h-24 bg-zinc-800 text-white placeholder-zinc-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+              />
             </div>
 
-            {/* Audio Sync Toggle */}
-            <div className="flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-300">音声と映像の同期</span>
-                <span className="text-zinc-600 text-xs">ⓘ</span>
+            {/* Aspect Ratio Selection */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">アスペクト比</label>
+              <div className="flex gap-2">
+                {aspectOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setAspect(opt.value)}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                      aspect === opt.value
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-              <button
-                onClick={() => setEnableAudioSync(!enableAudioSync)}
-                className={cn(
-                  'relative w-12 h-6 rounded-full transition-colors',
-                  enableAudioSync ? 'bg-emerald-500' : 'bg-zinc-600'
-                )}
-              >
-                <div
+            </div>
+
+            {/* Audio Sync Toggle (2.6 only) */}
+            {model === '2.6' && (
+              <div className="flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm text-zinc-300">音声生成</span>
+                </div>
+                <button
+                  onClick={() => setEnableAudioSync(!enableAudioSync)}
                   className={cn(
-                    'absolute top-1 w-4 h-4 bg-white rounded-full transition-transform',
-                    enableAudioSync ? 'translate-x-7' : 'translate-x-1'
+                    'relative w-12 h-6 rounded-full transition-colors',
+                    enableAudioSync ? 'bg-emerald-500' : 'bg-zinc-600'
                   )}
-                />
-              </button>
-            </div>
+                >
+                  <div
+                    className={cn(
+                      'absolute top-1 w-4 h-4 bg-white rounded-full transition-transform',
+                      enableAudioSync ? 'translate-x-7' : 'translate-x-1'
+                    )}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -320,6 +449,27 @@ export function GenerateInputPanel({
                 placeholder="生成したい動画の内容を詳しく説明してください..."
                 className="w-full h-40 bg-zinc-800 text-white placeholder-zinc-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
               />
+            </div>
+
+            {/* Aspect Ratio Selection */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">アスペクト比</label>
+              <div className="flex gap-2">
+                {aspectOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setAspect(opt.value)}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                      aspect === opt.value
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Prompt Suggestions */}
@@ -340,6 +490,30 @@ export function GenerateInputPanel({
                 </button>
               </div>
             </div>
+
+            {/* Audio Toggle (2.6 only) */}
+            {model === '2.6' && (
+              <div className="flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm text-zinc-300">音声生成</span>
+                </div>
+                <button
+                  onClick={() => setEnableAudioSync(!enableAudioSync)}
+                  className={cn(
+                    'relative w-12 h-6 rounded-full transition-colors',
+                    enableAudioSync ? 'bg-emerald-500' : 'bg-zinc-600'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-1 w-4 h-4 bg-white rounded-full transition-transform',
+                      enableAudioSync ? 'translate-x-7' : 'translate-x-1'
+                    )}
+                  />
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -352,6 +526,7 @@ export function GenerateInputPanel({
               <p className="text-sm text-zinc-500">
                 動画の動きやカメラワークを細かく制御できます
               </p>
+              <p className="text-xs text-zinc-600 mt-2">Coming Soon</p>
             </div>
           </div>
         )}
@@ -365,10 +540,22 @@ export function GenerateInputPanel({
               <p className="text-sm text-zinc-500">
                 複数の画像要素を組み合わせて動画を生成します（最大7枚）
               </p>
+              <p className="text-xs text-zinc-600 mt-2">Coming Soon</p>
             </div>
           </div>
         )}
       </div>
+
+      {/* Generation Progress */}
+      {isGenerating && generationProgress !== undefined && (
+        <div className="px-6 py-3 border-t border-zinc-800">
+          <div className="flex items-center justify-between text-sm text-zinc-400 mb-2">
+            <span>生成中...</span>
+            <span>{generationProgress}%</span>
+          </div>
+          <Progress value={generationProgress} className="h-2" />
+        </div>
+      )}
 
       {/* Bottom Settings Bar */}
       <div className="flex items-center gap-3 p-4 border-t border-zinc-800 bg-zinc-900">
@@ -381,7 +568,7 @@ export function GenerateInputPanel({
             <span className="text-sm text-zinc-300">
               {qualityOptions.find((q) => q.id === quality)?.name}
             </span>
-            {quality === 'high' && (
+            {quality === 'pro' && (
               <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded">VIP</span>
             )}
             <ChevronDown className="h-4 w-4 text-zinc-500" />
@@ -416,27 +603,12 @@ export function GenerateInputPanel({
         <div className="flex items-center gap-1 px-3 py-2 bg-zinc-800 rounded-lg">
           <select
             value={duration}
-            onChange={(e) => setDuration(e.target.value)}
+            onChange={(e) => setDuration(parseInt(e.target.value) as 5 | 10)}
             className="bg-transparent text-sm text-zinc-300 focus:outline-none cursor-pointer"
           >
             {durationOptions.map((opt) => (
-              <option key={opt} value={opt} className="bg-zinc-800">
-                {opt}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Count */}
-        <div className="flex items-center gap-1 px-3 py-2 bg-zinc-800 rounded-lg">
-          <select
-            value={count}
-            onChange={(e) => setCount(e.target.value)}
-            className="bg-transparent text-sm text-zinc-300 focus:outline-none cursor-pointer"
-          >
-            {countOptions.map((opt) => (
-              <option key={opt} value={opt} className="bg-zinc-800">
-                {opt}
+              <option key={opt.value} value={opt.value} className="bg-zinc-800">
+                {opt.label}
               </option>
             ))}
           </select>
@@ -447,14 +619,19 @@ export function GenerateInputPanel({
 
         {/* Generate Button */}
         <Button
-          onClick={onGenerate}
-          disabled={isGenerating || (activeMode === 'image-to-video' && !startFrame)}
+          onClick={handleGenerate}
+          disabled={!canGenerate()}
           className="px-10 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isGenerating ? (
             <span className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
               生成中...
+            </span>
+          ) : isUploading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              アップロード中...
             </span>
           ) : (
             '生成'

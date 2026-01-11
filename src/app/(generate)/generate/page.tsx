@@ -1,42 +1,70 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import Link from 'next/link'
-import {
-  ArrowLeft,
-  Sparkles,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize2,
-  Download,
-  Heart,
-  Share2,
-  MoreHorizontal,
-  Grid3X3,
-  List,
-  Clock,
-  Loader2,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { GenerateSidebar } from '@/components/generate/GenerateSidebar'
 import { GenerateInputPanel } from '@/components/generate/GenerateInputPanel'
 import { GeneratePreviewPanel } from '@/components/generate/GeneratePreviewPanel'
+import { useKlingGenerate } from '@/hooks/useKlingGenerate'
+import { useVideoStatus } from '@/hooks/useVideoStatus'
+import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
 
 export default function GeneratePage() {
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null)
+  const router = useRouter()
   const [prompt, setPrompt] = useState('')
+  const [generatedVideoId, setGeneratedVideoId] = useState<string | null>(null)
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null)
 
-  const handleGenerate = useCallback(async () => {
-    setIsGenerating(true)
-    // TODO: Connect to Kling API
-    setTimeout(() => {
-      setIsGenerating(false)
-      setGeneratedVideo('https://example.com/video.mp4')
-    }, 3000)
-  }, [])
+  const { mutate: generateVideo, isPending: isGenerating } = useKlingGenerate()
+
+  // Poll for video status when we have a video ID
+  const { data: videoStatus } = useVideoStatus(generatedVideoId, {
+    enabled: !!generatedVideoId,
+    pollInterval: 3000,
+  })
+
+  // Update video URL when status changes to completed
+  if (videoStatus?.status === 'completed' && videoStatus.remoteUrl && !generatedVideoUrl) {
+    setGeneratedVideoUrl(videoStatus.remoteUrl)
+    toast.success('動画生成が完了しました')
+  }
+
+  const handleGenerate = useCallback(async (params: {
+    mode: 'image-to-video' | 'text-to-video'
+    imageUrl?: string
+    imageTailUrl?: string
+    prompt: string
+    modelVersion: KlingModelVersion
+    aspectRatio: KlingAspectRatio
+    quality: KlingQuality
+    duration: 5 | 10
+    enableAudio?: boolean
+  }) => {
+    generateVideo(
+      {
+        mode: params.mode,
+        imageUrl: params.imageUrl,
+        imageTailUrl: params.imageTailUrl,
+        prompt: params.prompt || 'AI generated video',
+        title: params.prompt?.slice(0, 50) || 'AI動画',
+        modelVersion: params.modelVersion,
+        aspectRatio: params.aspectRatio,
+        quality: params.quality,
+        duration: params.duration,
+        enableAudio: params.enableAudio,
+      },
+      {
+        onSuccess: (data) => {
+          setGeneratedVideoId(data.video.id)
+          toast.success('動画生成を開始しました')
+        },
+        onError: (error) => {
+          toast.error(error.message || '動画生成に失敗しました')
+        },
+      }
+    )
+  }, [generateVideo])
 
   return (
     <div className="flex h-screen bg-zinc-950">
@@ -50,13 +78,17 @@ export default function GeneratePage() {
           prompt={prompt}
           setPrompt={setPrompt}
           isGenerating={isGenerating}
+          generationProgress={videoStatus?.progress}
           onGenerate={handleGenerate}
         />
 
         {/* Right Panel - Preview & History */}
         <GeneratePreviewPanel
-          generatedVideo={generatedVideo}
+          generatedVideoId={generatedVideoId}
+          generatedVideoUrl={generatedVideoUrl}
           isGenerating={isGenerating}
+          generationProgress={videoStatus?.progress}
+          generationStatus={videoStatus?.status}
         />
       </div>
     </div>
