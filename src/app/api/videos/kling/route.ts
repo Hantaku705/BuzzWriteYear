@@ -27,10 +27,10 @@ async function fetchCropAndUpload(
   let targetRatio: number
   switch (targetAspectRatio) {
     case '9:16':
-      targetRatio = 9 / 16
+      targetRatio = 9 / 16  // 0.5625 (縦長)
       break
     case '16:9':
-      targetRatio = 16 / 9
+      targetRatio = 16 / 9  // 1.777 (横長)
       break
     case '1:1':
     default:
@@ -38,11 +38,18 @@ async function fetchCropAndUpload(
       break
   }
 
+  console.log(`[Kling Crop] Source: ${metadata.width}x${metadata.height} (ratio: ${srcRatio.toFixed(3)})`)
+  console.log(`[Kling Crop] Target: ${targetAspectRatio} (ratio: ${targetRatio.toFixed(3)})`)
+
   // アスペクト比が近い場合（±5%）はクロップ不要
+  const ratioDiff = Math.abs(srcRatio - targetRatio) / targetRatio
   const ratioTolerance = 0.05
-  if (Math.abs(srcRatio - targetRatio) / targetRatio < ratioTolerance) {
+  if (ratioDiff < ratioTolerance) {
+    console.log(`[Kling Crop] Ratio difference ${(ratioDiff * 100).toFixed(1)}% < 5% tolerance, skipping crop`)
     return imageUrl // 元のURLをそのまま返す
   }
+
+  console.log(`[Kling Crop] Ratio difference ${(ratioDiff * 100).toFixed(1)}% > 5% tolerance, cropping required`)
 
   // クロップ実行
   const cropped = await cropToAspectRatio(buffer, targetAspectRatio, {
@@ -50,6 +57,8 @@ async function fetchCropAndUpload(
     quality: 90,
     format: 'jpeg', // PiAPIはJPEGを推奨
   })
+
+  console.log(`[Kling Crop] Cropped to: ${cropped.width}x${cropped.height} (${(cropped.size / 1024).toFixed(1)}KB)`)
 
   // Supabase Storageにアップロード
   const fileName = `kling-input/${userId}/${Date.now()}-${targetAspectRatio.replace(':', 'x')}.jpg`
@@ -160,10 +169,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Image-to-Video: アスペクト比に合わせて画像をクロップ
+    // 重要: PiAPI I2Vモードではaspect_ratioパラメータが無視され、
+    // 入力画像のアスペクト比がそのまま出力動画に使用されるため、
+    // 事前にクロップが必須
     let processedImageUrl = imageUrl
     let processedTailUrl = imageTailUrl
     if (mode === 'image-to-video' && imageUrl) {
       try {
+        console.log(`[Kling] Cropping image to ${aspectRatio}...`)
+        console.log(`[Kling] Original image URL: ${imageUrl}`)
         processedImageUrl = await fetchCropAndUpload(imageUrl, aspectRatio, supabase, user.id)
         console.log(`[Kling] Image cropped to ${aspectRatio}: ${processedImageUrl}`)
 
@@ -174,7 +188,11 @@ export async function POST(request: NextRequest) {
         }
       } catch (cropError) {
         console.error('[Kling] Image crop error:', cropError)
-        // クロップ失敗時は元のURLを使用（PiAPIがアスペクト比を推測）
+        // I2Vモードではクロップ必須 - エラー時は処理を中断
+        return NextResponse.json(
+          { error: 'Failed to crop image to target aspect ratio', details: String(cropError) },
+          { status: 500 }
+        )
       }
     }
 

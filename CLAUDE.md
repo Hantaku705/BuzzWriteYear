@@ -238,7 +238,13 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/api/videos/kling` | POST | Kling AI動画生成（I2V/T2V、自動アスペクト比クロップ） |
 | `/api/videos/kling/extend` | POST | Kling動画延長（5秒→10秒） |
 | `/api/videos/kling/lip-sync` | POST/GET | Kling Lip Sync（音声同期） |
-| `/api/videos/kling/elements` | POST | Kling Elements（画像要素を動画に追加） |
+| `/api/videos/kling/elements` | POST | Kling Elements（画像要素を動画に追加、最大7枚） |
+| `/api/videos/kling/motion` | POST/GET | **NEW** Motion Reference（モーション参照動画生成） |
+| `/api/videos/kling/camera` | POST/GET | **NEW** Camera Control（カメラワーク制御） |
+| `/api/videos/kling/style` | POST/GET | **NEW** Style Transfer（スタイル変換） |
+| `/api/videos/kling/edit` | POST/GET | **NEW** V2V Edit（自然言語動画編集） |
+| `/api/videos/kling/background` | POST/GET | **NEW** Background Replace（背景変更） |
+| `/api/videos/kling/inpaint` | POST/GET | **NEW** Inpaint（オブジェクト削除） |
 | `/api/videos/[id]/status` | GET | 動画生成進捗取得 |
 | `/api/videos/[id]/cancel` | POST | 動画生成キャンセル |
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |
@@ -273,10 +279,18 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | **自動クロップ** | I2V時、指定アスペクト比に画像を自動クロップ |
 | **Extend** | 5秒→10秒への動画延長 |
 | **Lip Sync** | 動画に音声を追加・同期（TTS/音声ファイル対応） |
-| **Elements** | 画像から要素を抽出して動画に合成（1-4枚対応） |
+| **Elements** | 画像から要素を抽出して動画に合成（最大7枚対応） |
+| **Motion Reference** | **NEW** 参照動画の動きを適用（プリセット12種類） |
+| **Camera Control** | **NEW** カメラワーク制御（プリセット14種類） |
+| **Style Transfer** | **NEW** スタイル変換（アニメ・油絵・サイバーパンク等16種類） |
+| **V2V Edit** | **NEW** 自然言語での動画編集 |
+| **Background Replace** | **NEW** 背景変更（スタジオ・自然・都市等16種類） |
+| **Inpaint** | **NEW** オブジェクト削除（自然言語指定） |
 
 **ファイル構成:**
 - `src/lib/video/kling/constants.ts` - 型定義・価格計算（クライアント用）
+- `src/lib/video/kling/motion-presets.ts` - モーション・カメラプリセット定義
+- `src/lib/video/kling/styles.ts` - スタイル・背景プリセット定義
 - `src/lib/video/kling/client.ts` - API関数（サーバー専用）
 - `src/lib/video/kling/prompts.ts` - プロンプトプリセット
 
@@ -334,6 +348,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | Recharts Tooltip formatter | `value as number` でキャスト |
 | Node.js fetch Buffer | `Blob` に変換して送信 |
 | Render REDIS_URL認証エラー | RenderダッシュボードでREDIS_URLを最新値に更新 |
+| **PiAPI Kling I2V アスペクト比** | **I2Vではaspect_ratioパラメータ無視、事前に画像をクロップ必須** |
 
 ---
 

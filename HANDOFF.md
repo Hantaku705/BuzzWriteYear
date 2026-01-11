@@ -123,6 +123,26 @@
   - `src/lib/video/kling/client.ts` をサーバー専用に整理
 - [x] **本番デプロイ完了**
 - [x] **/confirm スキル作成（本番E2Eテスト）**
+- [x] **Gemini 2.0 Video APIで動画分析機能作成**
+- [x] **Kling O1 YouTube動画の分析・機能理解**
+- [x] **中毒性・UX改善（/reco v3実行）**
+  - Skeletonシマーアニメーション追加
+  - 動画生成完了演出強化（パーティクルバースト）
+  - A/Bテスト推奨ボタン強化（グロー効果）
+  - テンプレートプレビュー機能追加
+  - 設定ページ接続ボタン機能追加
+  - 分析ページ非機能ボタン無効化
+  - RemotionPreviewエラー表示改善
+  - ProductFormアップロード状態改善
+- [x] **N+1クエリ最適化（32→8クエリ）**
+  - analytics.ts: getVideoPerformance() 21→2クエリ
+  - analytics.ts: getTemplatePerformance() N+1→3クエリ
+  - stats.ts: getTopProducts() 3N+1→3クエリ
+- [x] **9:16アスペクト比問題修正**
+  - 原因: PiAPI I2Vモードではaspect_ratioパラメータが無視され、入力画像のアスペクト比が使用される
+  - 修正: I2Vモードでは画像クロップを必須化（エラー時はフォールバックせず中断）
+  - 詳細ログ追加（クロップ前後のサイズ確認用）
+  - Vercel本番デプロイ完了
 
 ### 作業中のタスク
 - なし
@@ -167,19 +187,68 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-A  .claude/commands/confirm.md
 M  CLAUDE.md
 M  HANDOFF.md
-M  tests/e2e/app-verification.spec.ts
+M  src/app/api/videos/kling/elements/route.ts
+M  src/app/api/videos/kling/route.ts
+M  src/lib/queue/client.ts
+M  src/lib/video/kling/client.ts
+M  src/lib/video/kling/constants.ts
+M  src/workers/kling.worker.ts
 M  tests/screenshots/analytics-dashboard.png
+?? YTDown.com_YouTube_Media_vIA0Ey8RzSA_005_240p.mp4
+?? scripts/analyze-video.ts
+?? src/app/api/videos/kling/background/
+?? src/app/api/videos/kling/camera/
+?? src/app/api/videos/kling/edit/
+?? src/app/api/videos/kling/inpaint/
+?? src/app/api/videos/kling/motion/
+?? src/app/api/videos/kling/style/
+?? src/lib/video/kling/motion-presets.ts
+?? src/lib/video/kling/styles.ts
 ```
 
 ## 最新コミット
 ```
-5be29f8 docs: mark O1 DB migration as completed
+671b9de feat(ux): improve engagement and performance
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション26）
+- **9:16アスペクト比問題の修正**
+  - 症状: 9:16を選択しても横型動画（16:9風）が生成される
+  - 原因調査: PiAPIドキュメント確認 → I2Vモードではaspect_ratioパラメータが無視される
+  - 入力画像のアスペクト比がそのまま出力動画に使用される仕様
+  - 修正内容:
+    - `src/app/api/videos/kling/route.ts`: 画像クロップを必須化
+    - エラー時のフォールバック（元URLを使用）を削除
+    - 詳細ログ追加（クロップ前後のサイズ確認用）
+  - Vercel本番デプロイ完了
+  - 本番E2Eテスト: 9/9 Pass
+- **重要な知見**
+  - PiAPI Kling I2V: aspect_ratioはT2Vのみ有効、I2Vでは入力画像依存
+  - I2Vで縦長動画を生成するには、事前に画像をクロップする必要がある
+
+### 2026-01-11（セッション25）
+- **Kling O1 YouTube動画の分析**
+  - Gemini 2.0 Video APIで動画内容を分析
+  - `scripts/analyze-video.ts` 作成（汎用動画分析スクリプト）
+  - Kling O1の主要機能を特定:
+    - マルチモーダル入力（テキスト、画像、動画）
+    - 素材の組み合わせ（最大7枚）
+    - 主体の設定（キャラクター一貫性）
+    - 自然言語編集（マスキング不要）
+    - 背景変更、スタイル変更、エフェクト演出
+    - カメラワーク参考、動きの参考
+    - スタート/エンド設定（デュアルキーフレーム）
+- **PiAPI Kling O1対応状況調査**
+  - Elements（キャラクター一貫性）: 対応（v1.6必須、最大4画像）
+  - Video Extend（動画延長）: 対応
+  - Lip Sync（音声同期）: 対応
+  - 自然言語編集: PiAPI未対応
+- **実装計画作成**
+  - `/Users/hantaku/.claude/plans/nifty-dreaming-candle.md`
 
 ### 2026-01-11（セッション24）
 - **動画生成0%問題の診断・解決**
