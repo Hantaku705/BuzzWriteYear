@@ -143,6 +143,11 @@
   - 修正: I2Vモードでは画像クロップを必須化（エラー時はフォールバックせず中断）
   - 詳細ログ追加（クロップ前後のサイズ確認用）
   - Vercel本番デプロイ完了
+- [x] **ヘビーユーザー向けUX改善（セッション27）**
+  - 設定保存機能（Zustand + localStorage）
+  - クイック生成ボタン（1クリック生成）
+  - 連続生成モード（完了後自動で次へ）
+  - 一括削除機能（複数選択→一括削除）
 
 ### 作業中のタスク
 - なし
@@ -187,33 +192,45 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M  CLAUDE.md
-M  HANDOFF.md
-M  src/app/api/videos/kling/elements/route.ts
-M  src/app/api/videos/kling/route.ts
-M  src/lib/queue/client.ts
-M  src/lib/video/kling/client.ts
-M  src/lib/video/kling/constants.ts
-M  src/workers/kling.worker.ts
-M  tests/screenshots/analytics-dashboard.png
-?? YTDown.com_YouTube_Media_vIA0Ey8RzSA_005_240p.mp4
-?? scripts/analyze-video.ts
-?? src/app/api/videos/kling/background/
-?? src/app/api/videos/kling/camera/
-?? src/app/api/videos/kling/edit/
-?? src/app/api/videos/kling/inpaint/
-?? src/app/api/videos/kling/motion/
-?? src/app/api/videos/kling/style/
-?? src/lib/video/kling/motion-presets.ts
-?? src/lib/video/kling/styles.ts
+?? howtokling.md
 ```
 
 ## 最新コミット
 ```
-671b9de feat(ux): improve engagement and performance
+6b13be2 feat(ux): add heavy user productivity features
 ```
 
 ## セッション履歴
+
+### 2026-01-11（セッション27）
+- **ヘビーユーザー向けUX改善実装**
+  - 10,000時間使用ユーザーの課題分析を実施
+  - 「1日50-100回の無駄クリックを80%削減」を目標に設定
+- **設定保存機能（Zustand + localStorage）**
+  - `src/store/videoSettingsStore.ts` 新規作成
+  - VideoGenerateModalの設定を永続化
+  - 保存対象: generationMode, modelVersion, aspectRatio, quality, duration, cfgScale, enableAudio, selectedPresetId, lastProduct
+  - SSR対応（skipHydration + rehydrate）
+- **クイック生成ボタン**
+  - モード選択画面の上部に緑色のカードで表示
+  - 「いつもの設定で生成」ボタンで1クリック生成
+  - 前回の商品 × プリセット × 設定を表示
+- **連続生成モード**
+  - パラメータ画面にSwitchを追加
+  - ONにすると完了後自動で次の生成画面へ遷移
+  - 大量生成時のクリック数を大幅削減
+- **一括削除機能**
+  - 動画一覧に「選択」ボタンを追加
+  - チェックボックスで複数選択
+  - 全選択/個別選択対応
+  - 確認ダイアログ付き一括削除
+  - `src/lib/api/videos.ts`: deleteVideos() 追加
+  - `src/hooks/useVideos.ts`: useDeleteVideos() 追加
+- **UIコンポーネント追加**
+  - Switch（shadcn/ui）
+  - Checkbox（shadcn/ui）
+- **本番デプロイ完了**
+  - E2Eテスト: 9/9 Pass
 
 ### 2026-01-11（セッション26）
 - **9:16アスペクト比問題の修正**

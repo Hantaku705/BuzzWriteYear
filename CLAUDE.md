@@ -144,6 +144,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
 | `src/app/(dashboard)/videos/[id]/` | 動画詳細ページ |
 | `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useOptimizedUpload, useGenerateVideo, useVideoStatus） |
+| `src/store/videoSettingsStore.ts` | **動画生成設定の永続化ストア（Zustand + localStorage）** |
 | `src/lib/api/` | API関数（products, videos, stats, analytics） |
 | `src/lib/query/` | TanStack Query設定 |
 | `src/lib/storage/` | Supabase Storage画像アップロード |
