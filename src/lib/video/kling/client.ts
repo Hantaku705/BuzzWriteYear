@@ -1,9 +1,39 @@
 /**
- * Kling AI API Client
+ * Kling AI API Client (Server-side only)
  * Provider: PiAPI (https://piapi.ai/kling-api)
  *
  * 商品画像からWebCM風の高品質動画を生成
+ * O1機能対応: デュアルキーフレーム、マルチモデル、音声生成
+ *
+ * NOTE: このファイルはサーバーサイドでのみ使用可能
+ * クライアントサイドでは constants.ts を使用してください
  */
+
+// 型定義・価格計算を再エクスポート（後方互換性）
+export {
+  type KlingMode,
+  type KlingDuration,
+  type KlingModelVersion,
+  type KlingQuality,
+  type KlingAspectRatio,
+  type KlingModel,
+  type KlingGenerationRequest,
+  type KlingTaskResponse,
+  type KlingTaskStatusResponse,
+  KLING_MODEL_INFO,
+  calculatePrice,
+  formatPrice,
+  isProOnlyModel,
+  supportsAudio,
+  supportsDualKeyframe,
+} from './constants'
+
+import type {
+  KlingModelVersion,
+  KlingGenerationRequest,
+  KlingTaskResponse,
+  KlingTaskStatusResponse,
+} from './constants'
 
 const PIAPI_BASE_URL = 'https://api.piapi.ai'
 
@@ -42,56 +72,45 @@ async function klingRequest<T>(
   return response.json()
 }
 
-// 型定義
-export type KlingMode = 'image-to-video' | 'text-to-video'
-export type KlingDuration = 5 | 10
-export type KlingModel = 'kling-v1' | 'kling-v1-5' | 'kling-v1-6' | 'kling-v2' | 'kling-v2-1'
-export type KlingQuality = 'standard' | 'pro'
-
-export interface KlingGenerationRequest {
-  mode: KlingMode
-  prompt: string
-  imageUrl?: string // Image-to-Video時に必須
-  duration?: KlingDuration
-  model?: KlingModel
-  quality?: KlingQuality
-  aspectRatio?: '16:9' | '9:16' | '1:1'
-  negativePrompt?: string
-}
-
-export interface KlingTaskResponse {
-  task_id: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-}
-
-export interface KlingTaskStatusResponse {
-  task_id: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  progress?: number
-  video_url?: string
-  thumbnail_url?: string
-  duration?: number
-  error?: string
-  created_at?: string
-  completed_at?: string
-}
+// ============================================
+// API関数
+// ============================================
 
 // Image-to-Video 生成開始
 export async function generateImageToVideo(
   request: Omit<KlingGenerationRequest, 'mode'> & { imageUrl: string }
 ): Promise<KlingTaskResponse> {
+  const modelVersion = request.modelVersion || '1.6'
+
+  const input: Record<string, unknown> = {
+    image_url: request.imageUrl,
+    prompt: request.prompt,
+    negative_prompt: request.negativePrompt || '',
+    duration: request.duration || 5,
+    aspect_ratio: request.aspectRatio || '9:16',
+    mode: request.quality === 'pro' ? 'pro' : 'std',
+    version: modelVersion,
+  }
+
+  // O1デュアルキーフレーム: 終了フレーム画像
+  if (request.imageTailUrl) {
+    input.image_tail_url = request.imageTailUrl
+  }
+
+  // CFG Scale
+  if (request.cfgScale !== undefined) {
+    input.cfg_scale = request.cfgScale
+  }
+
+  // 音声生成 (2.6のみ)
+  if (request.enableAudio && modelVersion === '2.6') {
+    input.enable_audio = true
+  }
+
   const payload = {
     model: 'kling',
     task_type: 'video_generation',
-    input: {
-      image_url: request.imageUrl,
-      prompt: request.prompt,
-      negative_prompt: request.negativePrompt || '',
-      duration: request.duration || 5,
-      aspect_ratio: request.aspectRatio || '9:16',
-      mode: request.quality === 'pro' ? 'pro' : 'std',
-      version: '1.6',
-    },
+    input,
   }
 
   const response = await klingRequest<{ data: KlingTaskResponse }>(
@@ -109,17 +128,31 @@ export async function generateImageToVideo(
 export async function generateTextToVideo(
   request: Omit<KlingGenerationRequest, 'mode' | 'imageUrl'>
 ): Promise<KlingTaskResponse> {
+  const modelVersion = request.modelVersion || '1.6'
+
+  const input: Record<string, unknown> = {
+    prompt: request.prompt,
+    negative_prompt: request.negativePrompt || '',
+    duration: request.duration || 5,
+    aspect_ratio: request.aspectRatio || '9:16',
+    mode: request.quality === 'pro' ? 'pro' : 'std',
+    version: modelVersion,
+  }
+
+  // CFG Scale
+  if (request.cfgScale !== undefined) {
+    input.cfg_scale = request.cfgScale
+  }
+
+  // 音声生成 (2.6のみ)
+  if (request.enableAudio && modelVersion === '2.6') {
+    input.enable_audio = true
+  }
+
   const payload = {
     model: 'kling',
     task_type: 'video_generation',
-    input: {
-      prompt: request.prompt,
-      negative_prompt: request.negativePrompt || '',
-      duration: request.duration || 5,
-      aspect_ratio: request.aspectRatio || '9:16',
-      mode: request.quality === 'pro' ? 'pro' : 'std',
-      version: '1.6',
-    },
+    input,
   }
 
   const response = await klingRequest<{ data: KlingTaskResponse }>(

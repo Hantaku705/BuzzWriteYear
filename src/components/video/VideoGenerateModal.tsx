@@ -35,6 +35,16 @@ import {
 import { useKlingGenerate } from '@/hooks/useKlingGenerate'
 import { useVideoStatus, useCancelVideo } from '@/hooks/useVideoStatus'
 import { KLING_PRESETS, type PromptPreset } from '@/lib/video/kling/prompts'
+import {
+  KLING_MODEL_INFO,
+  calculatePrice,
+  formatPrice,
+  isProOnlyModel,
+  supportsAudio,
+  type KlingModelVersion,
+  type KlingAspectRatio,
+  type KlingQuality,
+} from '@/lib/video/kling/constants'
 
 interface VideoGenerateModalProps {
   open: boolean
@@ -108,6 +118,13 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
   const [selectedPreset, setSelectedPreset] = useState<PromptPreset>(KLING_PRESETS[0])
   const [customPrompt, setCustomPrompt] = useState('')
   const [klingDuration, setKlingDuration] = useState<5 | 10>(5)
+  // O1新機能State
+  const [modelVersion, setModelVersion] = useState<KlingModelVersion>('1.6')
+  const [aspectRatio, setAspectRatio] = useState<KlingAspectRatio>('9:16')
+  const [quality, setQuality] = useState<KlingQuality>('standard')
+  const [enableAudio, setEnableAudio] = useState(false)
+  const [endKeyframeImage, setEndKeyframeImage] = useState('')
+  const [cfgScale, setCfgScale] = useState(0.5)
 
   // 生成中State
   const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null)
@@ -273,6 +290,24 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
     return `${selectedPreset.prompt}, featuring "${selectedProduct?.name || 'product'}"`
   }, [selectedPreset, customPrompt, selectedProduct])
 
+  // 動的価格計算
+  const estimatedPrice = useMemo(() => {
+    return calculatePrice(modelVersion, quality, klingDuration)
+  }, [modelVersion, quality, klingDuration])
+
+  // モデル変更時の自動調整
+  const handleModelChange = (newModel: KlingModelVersion) => {
+    setModelVersion(newModel)
+    // 2.1-masterは自動的にPro固定
+    if (isProOnlyModel(newModel)) {
+      setQuality('pro')
+    }
+    // 音声は2.6以外では無効化
+    if (!supportsAudio(newModel)) {
+      setEnableAudio(false)
+    }
+  }
+
   const handleNext = () => {
     if (step === 'mode' && generationMode) {
       if (generationMode === 'remotion') {
@@ -336,11 +371,18 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
         productId: selectedProductId,
         mode: 'image-to-video',
         imageUrl: selectedProduct?.images[0],
+        imageTailUrl: endKeyframeImage || undefined,  // O1デュアルキーフレーム
         prompt: klingPrompt,
         negativePrompt: selectedPreset.negativePrompt,
         duration: klingDuration,
         presetId: selectedPreset.id,
         title: videoTitle,
+        // O1新パラメータ
+        modelVersion,
+        aspectRatio,
+        quality,
+        cfgScale,
+        enableAudio: supportsAudio(modelVersion) ? enableAudio : undefined,
       })
 
       // 生成画面に遷移
@@ -393,6 +435,13 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
     setSelectedPreset(KLING_PRESETS[0])
     setCustomPrompt('')
     setKlingDuration(5)
+    // O1 State
+    setModelVersion('1.6')
+    setAspectRatio('9:16')
+    setQuality('standard')
+    setEnableAudio(false)
+    setEndKeyframeImage('')
+    setCfgScale(0.5)
     // 生成中State
     setGeneratingVideoId(null)
     setStartTime(null)
@@ -629,16 +678,163 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
                 />
               </div>
 
-              {/* Kling用パラメータ */}
+              {/* Kling用パラメータ（O1機能対応） */}
               {generationMode === 'kling' && (
                 <>
+                  {/* モデル選択 */}
+                  <div>
+                    <Label>AIモデル</Label>
+                    <Select value={modelVersion} onValueChange={(v) => handleModelChange(v as KlingModelVersion)}>
+                      <SelectTrigger className="bg-zinc-800 border-zinc-700 mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-800 border-zinc-700">
+                        {(Object.entries(KLING_MODEL_INFO) as [KlingModelVersion, typeof KLING_MODEL_INFO[KlingModelVersion]][]).map(([key, info]) => (
+                          <SelectItem key={key} value={key}>
+                            <div className="flex items-center gap-2">
+                              <span>{info.nameJa}</span>
+                              {info.features.includes('native_audio') && (
+                                <span className="text-xs bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded">音声</span>
+                              )}
+                              {key === '2.1-master' && (
+                                <span className="text-xs bg-yellow-500/20 text-yellow-300 px-1.5 py-0.5 rounded">Pro専用</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* アスペクト比 */}
+                  <div>
+                    <Label>アスペクト比</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <Button
+                        type="button"
+                        variant={aspectRatio === '9:16' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 ${aspectRatio === '9:16' ? 'bg-pink-500' : 'border-zinc-700'}`}
+                        onClick={() => setAspectRatio('9:16')}
+                      >
+                        <div className="w-4 h-6 border-2 border-current rounded-sm" />
+                        <span className="text-xs">9:16</span>
+                        <span className="text-[10px] opacity-70">TikTok</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={aspectRatio === '16:9' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 ${aspectRatio === '16:9' ? 'bg-pink-500' : 'border-zinc-700'}`}
+                        onClick={() => setAspectRatio('16:9')}
+                      >
+                        <div className="w-6 h-4 border-2 border-current rounded-sm" />
+                        <span className="text-xs">16:9</span>
+                        <span className="text-[10px] opacity-70">YouTube</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={aspectRatio === '1:1' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 ${aspectRatio === '1:1' ? 'bg-pink-500' : 'border-zinc-700'}`}
+                        onClick={() => setAspectRatio('1:1')}
+                      >
+                        <div className="w-5 h-5 border-2 border-current rounded-sm" />
+                        <span className="text-xs">1:1</span>
+                        <span className="text-[10px] opacity-70">Instagram</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 品質モード */}
+                  <div>
+                    <Label>品質モード</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        type="button"
+                        variant={quality === 'standard' ? 'default' : 'outline'}
+                        className={`flex-1 ${quality === 'standard' ? 'bg-pink-500' : 'border-zinc-700'}`}
+                        onClick={() => setQuality('standard')}
+                        disabled={isProOnlyModel(modelVersion)}
+                      >
+                        Standard
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={quality === 'pro' ? 'default' : 'outline'}
+                        className={`flex-1 ${quality === 'pro' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'border-zinc-700'}`}
+                        onClick={() => setQuality('pro')}
+                      >
+                        Professional
+                        <span className="ml-1 text-xs opacity-70">高品質</span>
+                      </Button>
+                    </div>
+                    {isProOnlyModel(modelVersion) && (
+                      <p className="text-xs text-yellow-400 mt-1">このモデルはProfessionalモード専用です</p>
+                    )}
+                  </div>
+
+                  {/* 動画の長さ */}
+                  <div>
+                    <Label>動画の長さ</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        type="button"
+                        variant={klingDuration === 5 ? 'default' : 'outline'}
+                        className={klingDuration === 5 ? 'bg-pink-500' : 'border-zinc-700'}
+                        onClick={() => setKlingDuration(5)}
+                      >
+                        5秒
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={klingDuration === 10 ? 'default' : 'outline'}
+                        className={klingDuration === 10 ? 'bg-pink-500' : 'border-zinc-700'}
+                        onClick={() => setKlingDuration(10)}
+                      >
+                        10秒
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 終了フレーム（O1デュアルキーフレーム） */}
+                  <div>
+                    <Label>終了フレーム画像（任意・O1モード）</Label>
+                    <Input
+                      value={endKeyframeImage}
+                      onChange={(e) => setEndKeyframeImage(e.target.value)}
+                      placeholder="終了画像のURL（開始→終了の補間動画を生成）"
+                      className="bg-zinc-800 border-zinc-700 mt-1"
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">
+                      開始画像と終了画像を指定すると、AIが自然な変化を補間します
+                    </p>
+                  </div>
+
+                  {/* 音声生成（2.6のみ） */}
+                  {supportsAudio(modelVersion) && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                      <div>
+                        <p className="text-sm font-medium text-white">音声生成</p>
+                        <p className="text-xs text-zinc-400">動画に合わせた音声を自動生成</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={enableAudio ? 'default' : 'outline'}
+                        size="sm"
+                        className={enableAudio ? 'bg-purple-500' : 'border-zinc-600'}
+                        onClick={() => setEnableAudio(!enableAudio)}
+                      >
+                        {enableAudio ? 'ON' : 'OFF'}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* スタイルプリセット */}
                   <div>
                     <Label>スタイルプリセット</Label>
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {KLING_PRESETS.filter(p => p.id !== 'custom').map((preset) => (
                         <Card
                           key={preset.id}
-                          className={`cursor-pointer transition-all ${
+                          className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
                             selectedPreset.id === preset.id
                               ? 'bg-pink-500/20 border-pink-500'
                               : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
@@ -654,6 +850,7 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
                     </div>
                   </div>
 
+                  {/* カスタムプロンプト */}
                   <div>
                     <Label>カスタムプロンプト（任意）</Label>
                     <Textarea
@@ -673,23 +870,18 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal }: V
                     </p>
                   </div>
 
-                  <div>
-                    <Label>動画の長さ</Label>
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        variant={klingDuration === 5 ? 'default' : 'outline'}
-                        className={klingDuration === 5 ? 'bg-pink-500' : 'border-zinc-700'}
-                        onClick={() => setKlingDuration(5)}
-                      >
-                        5秒（$0.16）
-                      </Button>
-                      <Button
-                        variant={klingDuration === 10 ? 'default' : 'outline'}
-                        className={klingDuration === 10 ? 'bg-pink-500' : 'border-zinc-700'}
-                        onClick={() => setKlingDuration(10)}
-                      >
-                        10秒（$0.32）
-                      </Button>
+                  {/* 予想コスト表示 */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-zinc-400">予想コスト</p>
+                        <p className="text-2xl font-bold text-white">{formatPrice(estimatedPrice)}</p>
+                      </div>
+                      <div className="text-right text-xs text-zinc-500">
+                        <p>{KLING_MODEL_INFO[modelVersion].name}</p>
+                        <p>{quality === 'pro' ? 'Professional' : 'Standard'} / {klingDuration}秒</p>
+                        <p>{aspectRatio}</p>
+                      </div>
                     </div>
                   </div>
 

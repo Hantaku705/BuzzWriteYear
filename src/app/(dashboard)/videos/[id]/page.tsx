@@ -148,7 +148,8 @@ export default function VideoDetailPage({
           </div>
         </div>
         <div className="flex gap-2">
-          {compositionId && inputProps && (
+          {/* AI生成動画またはテンプレート動画のダウンロードボタン */}
+          {(video.remote_url || (compositionId && inputProps)) && (
             <VideoDownloadButton
               videoId={id}
               videoUrl={video.remote_url}
@@ -218,7 +219,22 @@ export default function VideoDetailPage({
             <CardTitle className="text-white">プレビュー</CardTitle>
           </CardHeader>
           <CardContent className="flex justify-center">
-            {compositionId && inputProps ? (
+            {/* AI生成動画: remote_urlがある場合はHTML5ビデオプレーヤー */}
+            {video.remote_url ? (
+              <div className="w-[320px] rounded-xl overflow-hidden bg-black">
+                <video
+                  src={video.remote_url}
+                  controls
+                  loop
+                  playsInline
+                  className="w-full h-auto max-h-[568px] object-contain"
+                  poster={video.product?.images?.[0]}
+                >
+                  お使いのブラウザは動画再生に対応していません。
+                </video>
+              </div>
+            ) : compositionId && inputProps ? (
+              /* テンプレート動画: Remotionプレビュー */
               <RemotionPreview
                 compositionId={compositionId}
                 inputProps={inputProps}
@@ -229,10 +245,36 @@ export default function VideoDetailPage({
                 controls={true}
               />
             ) : (
+              /* プレビューなし: ステータスに応じたメッセージ */
               <div className="w-[320px] h-[568px] bg-zinc-800 rounded-xl flex items-center justify-center">
-                <div className="text-center">
-                  <Video className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                  <p className="text-zinc-500">プレビューを表示できません</p>
+                <div className="text-center px-4">
+                  {video.status === 'generating' ? (
+                    <>
+                      <Loader2 className="h-12 w-12 text-pink-500 mx-auto mb-4 animate-spin" />
+                      <p className="text-zinc-300 font-medium">動画を生成中...</p>
+                      <p className="text-zinc-500 text-sm mt-2">
+                        {video.progress_message || `${video.progress || 0}%完了`}
+                      </p>
+                    </>
+                  ) : video.status === 'cancelled' ? (
+                    <>
+                      <XCircle className="h-12 w-12 text-zinc-600 mx-auto mb-4" />
+                      <p className="text-zinc-400">生成がキャンセルされました</p>
+                    </>
+                  ) : video.status === 'failed' ? (
+                    <>
+                      <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                      <p className="text-zinc-300">生成に失敗しました</p>
+                      <p className="text-zinc-500 text-sm mt-2">
+                        {video.progress_message || '再度お試しください'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Video className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
+                      <p className="text-zinc-500">プレビューを表示できません</p>
+                    </>
+                  )}
                 </div>
               </div>
             )}

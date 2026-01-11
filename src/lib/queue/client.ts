@@ -95,10 +95,17 @@ export interface KlingJobData {
   productId: string
   mode: 'image-to-video' | 'text-to-video'
   imageUrl?: string
+  imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
   negativePrompt?: string
   duration: 5 | 10
   presetId?: string
+  // O1新パラメータ
+  modelVersion?: '1.5' | '1.6' | '2.1' | '2.1-master' | '2.5' | '2.6'
+  aspectRatio?: '16:9' | '9:16' | '1:1'
+  quality?: 'standard' | 'pro'
+  cfgScale?: number
+  enableAudio?: boolean           // 2.6のみ
 }
 
 export interface PipelineJobData {

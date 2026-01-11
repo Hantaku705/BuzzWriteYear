@@ -65,6 +65,7 @@ export type Database = {
           remote_url: string | null
           duration_seconds: number | null
           input_props: Json | null
+          generation_config: Json | null
           progress: number | null
           progress_message: string | null
           created_at: string
@@ -84,6 +85,7 @@ export type Database = {
           remote_url?: string | null
           duration_seconds?: number | null
           input_props?: Json | null
+          generation_config?: Json | null
           progress?: number | null
           progress_message?: string | null
           created_at?: string
@@ -103,6 +105,7 @@ export type Database = {
           remote_url?: string | null
           duration_seconds?: number | null
           input_props?: Json | null
+          generation_config?: Json | null
           progress?: number | null
           progress_message?: string | null
           created_at?: string
@@ -253,10 +256,24 @@ export type ContentType =
   | 'unboxing'
 
 // Generation methods
-export type GenerationMethod = 'remotion' | 'heygen' | 'ffmpeg'
+export type GenerationMethod = 'remotion' | 'heygen' | 'ffmpeg' | 'kling'
 
 // Video status
 export type VideoStatus = 'draft' | 'generating' | 'ready' | 'posting' | 'posted' | 'failed' | 'cancelled'
 
 // Schedule status
 export type ScheduleStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+// Kling AI O1 configuration types
+export type KlingModelVersion = '1.5' | '1.6' | '2.1' | '2.1-master' | '2.5' | '2.6'
+export type KlingAspectRatio = '16:9' | '9:16' | '1:1'
+export type KlingQuality = 'standard' | 'pro'
+
+export interface KlingGenerationConfig {
+  modelVersion: KlingModelVersion
+  aspectRatio: KlingAspectRatio
+  quality: KlingQuality
+  cfgScale?: number
+  enableAudio?: boolean
+  hasEndKeyframe?: boolean
+}

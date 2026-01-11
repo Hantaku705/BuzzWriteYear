@@ -7,11 +7,18 @@ const klingGenerateSchema = z.object({
   productId: z.string().uuid(),
   mode: z.enum(['image-to-video', 'text-to-video']),
   imageUrl: z.string().url().optional(),
-  prompt: z.string().min(1).max(1000),
-  negativePrompt: z.string().max(500).optional(),
+  imageTailUrl: z.string().url().optional(),  // O1デュアルキーフレーム
+  prompt: z.string().min(1).max(2500),        // PiAPIは2500文字まで対応
+  negativePrompt: z.string().max(2500).optional(),
   duration: z.enum(['5', '10']).transform(v => parseInt(v) as 5 | 10),
   presetId: z.string().optional(),
   title: z.string().min(1).max(255),
+  // O1新パラメータ
+  modelVersion: z.enum(['1.5', '1.6', '2.1', '2.1-master', '2.5', '2.6']).default('1.6'),
+  aspectRatio: z.enum(['16:9', '9:16', '1:1']).default('9:16'),
+  quality: z.enum(['standard', 'pro']).default('standard'),
+  cfgScale: z.number().min(0).max(1).optional(),
+  enableAudio: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -46,12 +53,34 @@ export async function POST(request: NextRequest) {
       productId,
       mode,
       imageUrl,
+      imageTailUrl,
       prompt,
       negativePrompt,
       duration,
       presetId,
       title,
+      modelVersion,
+      aspectRatio,
+      quality,
+      cfgScale,
+      enableAudio,
     } = validationResult.data
+
+    // バリデーション: 2.1-masterはPro専用
+    if (modelVersion === '2.1-master' && quality !== 'pro') {
+      return NextResponse.json(
+        { error: 'Kling 2.1 Master requires Professional mode' },
+        { status: 400 }
+      )
+    }
+
+    // バリデーション: 音声生成は2.6のみ
+    if (enableAudio && modelVersion !== '2.6') {
+      return NextResponse.json(
+        { error: 'Audio generation is only available with Kling 2.6' },
+        { status: 400 }
+      )
+    }
 
     // Image-to-Videoモードの場合、imageUrlは必須
     if (mode === 'image-to-video' && !imageUrl) {
@@ -76,6 +105,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // generation_config を作成
+    const generationConfig = {
+      modelVersion,
+      aspectRatio,
+      quality,
+      cfgScale,
+      enableAudio: enableAudio || false,
+      hasEndKeyframe: !!imageTailUrl,
+    }
+
     // ビデオレコード作成
     const { data: videoData, error: videoError } = await supabase
       .from('videos')
@@ -87,6 +126,7 @@ export async function POST(request: NextRequest) {
         generation_method: 'kling',
         status: 'generating',
         duration_seconds: duration,
+        generation_config: generationConfig,
       } as never)
       .select()
       .single()
@@ -108,10 +148,17 @@ export async function POST(request: NextRequest) {
       productId,
       mode,
       imageUrl: imageUrl || (product as { images: string[] }).images?.[0],
+      imageTailUrl,
       prompt,
       negativePrompt,
       duration,
       presetId,
+      // O1新パラメータ
+      modelVersion,
+      aspectRatio,
+      quality,
+      cfgScale,
+      enableAudio,
     })
 
     return NextResponse.json({

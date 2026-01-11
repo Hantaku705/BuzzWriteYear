@@ -347,5 +347,15 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
+-- 004: Kling AI O1 Configuration
+-- ============================================
+
+-- 動画生成設定を保存するカラム（Kling AI O1機能用）
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS generation_config JSONB;
+
+-- generation_configカラムの説明
+COMMENT ON COLUMN videos.generation_config IS 'Kling AI generation parameters: modelVersion, aspectRatio, quality, cfgScale, enableAudio, hasEndKeyframe';
+
+-- ============================================
 -- マイグレーション完了
 -- ============================================

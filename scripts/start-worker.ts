@@ -56,10 +56,17 @@ interface KlingJobData {
   productId: string
   mode: 'image-to-video' | 'text-to-video'
   imageUrl?: string
+  imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
   negativePrompt?: string
   duration: 5 | 10
   presetId?: string
+  // O1新パラメータ
+  modelVersion?: '1.5' | '1.6' | '2.1' | '2.1-master' | '2.5' | '2.6'
+  aspectRatio?: '16:9' | '9:16' | '1:1'
+  quality?: 'standard' | 'pro'
+  cfgScale?: number
+  enableAudio?: boolean           // 2.6のみ
 }
 
 // 進捗更新
@@ -107,22 +114,44 @@ async function generateVideo(params: {
   mode: string
   prompt: string
   imageUrl?: string
+  imageTailUrl?: string           // O1デュアルキーフレーム
   negativePrompt?: string
   duration: number
   aspectRatio: string
+  modelVersion?: string           // モデルバージョン
+  quality?: string                // standard | pro
+  cfgScale?: number               // 0.0 - 1.0
+  enableAudio?: boolean           // 2.6のみ
 }): Promise<{ task_id: string }> {
+  const modelVersion = params.modelVersion || '1.6'
+
   const input: Record<string, unknown> = {
     prompt: params.prompt,
     negative_prompt: params.negativePrompt || 'blurry, low quality',
     duration: params.duration,
     aspect_ratio: params.aspectRatio,
-    mode: 'std',
-    version: '1.6',
+    mode: params.quality === 'pro' ? 'pro' : 'std',
+    version: modelVersion,
   }
 
   // image_urlがあればimage-to-video、なければtext-to-video
   if (params.imageUrl) {
     input.image_url = params.imageUrl
+  }
+
+  // O1デュアルキーフレーム: 終了フレーム画像
+  if (params.imageTailUrl) {
+    input.image_tail_url = params.imageTailUrl
+  }
+
+  // CFG Scale
+  if (params.cfgScale !== undefined) {
+    input.cfg_scale = params.cfgScale
+  }
+
+  // 音声生成 (2.6のみ)
+  if (params.enableAudio && modelVersion === '2.6') {
+    input.enable_audio = true
   }
 
   const body = {
@@ -226,9 +255,24 @@ function getProgressMessage(progress: number): string {
 
 // ジョブ処理
 async function processKlingJob(job: Job<KlingJobData>) {
-  const { videoId, userId, mode, imageUrl, prompt, negativePrompt, duration } = job.data
+  const {
+    videoId,
+    userId,
+    mode,
+    imageUrl,
+    imageTailUrl,
+    prompt,
+    negativePrompt,
+    duration,
+    modelVersion,
+    aspectRatio,
+    quality,
+    cfgScale,
+    enableAudio,
+  } = job.data
 
   console.log(`[Worker] Processing job ${job.id} for video ${videoId}`)
+  console.log(`[Worker] Model: ${modelVersion || '1.6'}, Aspect: ${aspectRatio || '9:16'}, Quality: ${quality || 'standard'}`)
 
   try {
     // キャンセルチェック
@@ -250,9 +294,14 @@ async function processKlingJob(job: Job<KlingJobData>) {
       mode,
       prompt,
       imageUrl,
+      imageTailUrl,
       negativePrompt: negativePrompt || 'blurry, low quality, distorted',
       duration,
-      aspectRatio: '9:16',
+      aspectRatio: aspectRatio || '9:16',
+      modelVersion: modelVersion || '1.6',
+      quality: quality || 'standard',
+      cfgScale,
+      enableAudio,
     })
 
     console.log(`[Worker] Task created: ${taskResponse.task_id}`)

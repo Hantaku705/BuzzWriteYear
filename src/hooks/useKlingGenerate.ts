@@ -1,14 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
 
 export interface KlingGenerateParams {
   productId: string
   mode: 'image-to-video' | 'text-to-video'
   imageUrl?: string
+  imageTailUrl?: string           // O1デュアルキーフレーム（終了フレーム）
   prompt: string
   negativePrompt?: string
   duration: 5 | 10
   presetId?: string
   title: string
+  // O1新パラメータ
+  modelVersion?: KlingModelVersion
+  aspectRatio?: KlingAspectRatio
+  quality?: KlingQuality
+  cfgScale?: number
+  enableAudio?: boolean           // 2.6のみ
 }
 
 interface KlingGenerateResponse {

@@ -14,8 +14,8 @@ import { Download, Loader2, Terminal, Copy, Check } from 'lucide-react'
 interface VideoDownloadButtonProps {
   videoId: string
   videoUrl?: string | null
-  compositionId: string
-  inputProps: Record<string, unknown>
+  compositionId?: string
+  inputProps?: Record<string, unknown> | null
   className?: string
 }
 
@@ -35,16 +35,20 @@ export function VideoDownloadButton({
       const link = document.createElement('a')
       link.href = videoUrl
       link.download = `video-${videoId}.mp4`
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-    } else {
-      // video_url がない場合はガイドダイアログを表示
+    } else if (compositionId && inputProps) {
+      // Remotion動画でvideo_urlがない場合はガイドダイアログを表示
       setIsDialogOpen(true)
     }
   }
 
-  const renderCommand = `npm run remotion:render -- ${compositionId} --props='${JSON.stringify(inputProps)}' --output=out/${videoId}.mp4`
+  const renderCommand = compositionId && inputProps
+    ? `npm run remotion:render -- ${compositionId} --props='${JSON.stringify(inputProps)}' --output=out/${videoId}.mp4`
+    : ''
 
   const copyCommand = async () => {
     await navigator.clipboard.writeText(renderCommand)
