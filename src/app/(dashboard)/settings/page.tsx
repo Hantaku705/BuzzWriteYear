@@ -93,7 +93,7 @@ export default function SettingsPage() {
             <>
               <div className="flex items-center gap-4 py-4">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pink-500 text-white text-2xl font-bold">
-                  {user.email?.charAt(0).toUpperCase()}
+                  {(user.email?.[0] ?? '?').toUpperCase()}
                 </div>
                 <div>
                   <p className="text-lg font-medium text-white">{user.email}</p>

@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -34,6 +35,7 @@ import { RemotionPreview } from '@/components/video/RemotionPreview'
 import { VideoDownloadButton } from '@/components/video/VideoDownloadButton'
 import { VariantGenerateModal } from '@/components/video/VariantGenerateModal'
 import { VideoEditActions } from '@/components/video/VideoEditActions'
+import { TikTokPostModal } from '@/components/tiktok/TikTokPostModal'
 import type { CompositionId } from '@/hooks/useGenerateVideo'
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -72,10 +74,16 @@ export default function VideoDetailPage({
   const { data: video, isLoading, error } = useVideo(id)
   const deleteVideo = useDeleteVideo()
   const [variantModalOpen, setVariantModalOpen] = useState(false)
+  const [tiktokPostModalOpen, setTiktokPostModalOpen] = useState(false)
 
   const handleDelete = async () => {
-    await deleteVideo.mutateAsync(id)
-    router.push('/videos')
+    try {
+      await deleteVideo.mutateAsync(id)
+      toast.success('動画を削除しました')
+      router.push('/videos')
+    } catch (error) {
+      toast.error('削除に失敗しました')
+    }
   }
 
   if (isLoading) {
@@ -172,6 +180,16 @@ export default function VideoDetailPage({
             >
               <Layers className="mr-2 h-4 w-4" />
               バリアント生成
+            </Button>
+          )}
+          {/* TikTok投稿ボタン（ready状態 & remote_urlあり & 未投稿） */}
+          {video.status === 'ready' && video.remote_url && !video.tiktok_video_id && (
+            <Button
+              className="bg-[#ff0050] hover:bg-[#e6004a]"
+              onClick={() => setTiktokPostModalOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              TikTokに投稿
             </Button>
           )}
           {/* AI編集（Kling動画のみ） */}
@@ -402,6 +420,19 @@ export default function VideoDetailPage({
         videoTitle={video.title}
         onSuccess={(variantIds) => {
           // バリアント生成成功後、リロードして表示更新
+          router.refresh()
+        }}
+      />
+
+      {/* TikTok Post Modal */}
+      <TikTokPostModal
+        open={tiktokPostModalOpen}
+        onOpenChange={setTiktokPostModalOpen}
+        videoId={id}
+        videoTitle={video.title}
+        productName={video.product?.name}
+        onSuccess={(postId) => {
+          toast.success('TikTokへの投稿を開始しました')
           router.refresh()
         }}
       />

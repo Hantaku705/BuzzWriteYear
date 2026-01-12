@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { GenerateSidebar } from '@/components/generate/GenerateSidebar'
@@ -25,10 +25,12 @@ export default function GeneratePage() {
   })
 
   // Update video URL when status changes to completed
-  if (videoStatus?.status === 'completed' && videoStatus.remoteUrl && !generatedVideoUrl) {
-    setGeneratedVideoUrl(videoStatus.remoteUrl)
-    toast.success('動画生成が完了しました')
-  }
+  useEffect(() => {
+    if (videoStatus?.status === 'completed' && videoStatus.remoteUrl && !generatedVideoUrl) {
+      setGeneratedVideoUrl(videoStatus.remoteUrl)
+      toast.success('動画生成が完了しました')
+    }
+  }, [videoStatus?.status, videoStatus?.remoteUrl, generatedVideoUrl])
 
   const handleGenerate = useCallback(async (params: {
     mode: 'image-to-video' | 'text-to-video'
