@@ -167,6 +167,12 @@
   - 4 Phase構造（ビルド→スキャン→分類→修正）
   - 3つのsubagent並列実行でページスキャン
   - 7段階の優先順位付けエラー分類
+- [x] **/error 実行・4件のエラー自動修正（セッション32）**
+  - deleteVideo: try-catch追加（videos/[id]/page.tsx）
+  - useEffect: 状態更新ラップ（generate/page.tsx, heygen/page.tsx）
+  - user.email: null安全性修正（settings/page.tsx）
+- [x] **/confirm 本番テスト実行・14/14 Pass（セッション32）**
+- [x] **HeyGen生成ページ作成（/generate/heygen）**
 
 ### 作業中のタスク
 - **TikTok投稿機能UI実装中**
@@ -214,28 +220,59 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
- M CLAUDE.md
- M src/app/(dashboard)/videos/[id]/page.tsx
+ M src/components/generate/GenerateSidebar.tsx
+ M src/lib/queue/client.ts
+ M src/workers/heygen-generator.ts
  M src/workers/tiktok-poster.ts
  M supabase/combined_migration.sql
 ?? howtokling.md
 ?? src/app/api/tiktok/accounts/
 ?? src/app/api/tiktok/post/
+?? src/app/api/videos/batch/
 ?? src/app/api/videos/heygen/
 ?? src/components/tiktok/
+?? src/components/video/BatchGenerateModal.tsx
+?? src/hooks/useBatchGenerate.ts
+?? src/hooks/useHeygenAssets.ts
+?? src/hooks/useHeygenGenerate.ts
 ?? src/hooks/useTikTokAccounts.ts
 ?? src/hooks/useTikTokPost.ts
 ?? src/lib/api/tiktok.ts
+?? src/lib/video/heygen/custom-avatar.ts
+?? src/types/batch.ts
 ?? src/types/tiktok.ts
+?? supabase/batch_jobs_migration.sql
 ?? supabase/tiktok_posts_migration.sql
 ```
 
 ## 最新コミット
 ```
-d35aedb docs: update session 30 handoff - TikTok posting UI in progress
+c0db8e7 fix: add error handling and useEffect safety improvements
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション32）
+- **/error スキル実行**
+  - Phase 1: ビルドチェック → 成功（TypeScriptエラーなし）
+  - Phase 2: 3つのsubagent並列実行でページスキャン
+    - 型・ランタイムエラー検出
+    - APIエラーハンドリング検出
+    - 状態管理・未定義変数検出
+  - Phase 3: エラー分類（高4件、中5件、低4件）
+  - Phase 4: 高優先度4件を自動修正
+- **エラー修正内容**
+  - `videos/[id]/page.tsx:79-82`: deleteVideoにtry-catch追加、エラー時toast表示
+  - `generate/page.tsx:27-31`: 状態更新をuseEffectでラップ（無限ループ防止）
+  - `generate/heygen/page.tsx:49-53`: 同上
+  - `settings/page.tsx:96`: user.emailのnull安全性修正（`?.charAt(0)` → `?.[0] ?? '?'`）
+- **コミット＆プッシュ**
+  - `c0db8e7 fix: add error handling and useEffect safety improvements`
+  - Vercel自動デプロイ完了
+- **/confirm 本番テスト実行**
+  - app-verification.spec.ts: 9/9 Pass (10.8s)
+  - kling-generation.spec.ts: 5/5 Pass (15.7s)
+  - 合計: 14/14 Pass (33.2s)
 
 ### 2026-01-12（セッション31）
 - **/error スキル作成**
