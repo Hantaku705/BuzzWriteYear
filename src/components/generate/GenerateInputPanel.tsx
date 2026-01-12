@@ -17,6 +17,7 @@ import {
   RefreshCw,
   ImagePlus,
   Loader2,
+  HelpCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -92,6 +93,7 @@ export function GenerateInputPanel({
   const [aspect, setAspect] = useState<KlingAspectRatio>(store.aspect)
   const [showModelDropdown, setShowModelDropdown] = useState(false)
   const [showQualityDropdown, setShowQualityDropdown] = useState(false)
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false)
   const [enableAudioSync, setEnableAudioSync] = useState(store.enableAudioSync)
   const [startFrame, setStartFrame] = useState<string | null>(null)
   const [startFrameUrl, setStartFrameUrl] = useState<string | null>(null)
@@ -101,25 +103,57 @@ export function GenerateInputPanel({
   const startFrameRef = useRef<HTMLInputElement>(null)
   const endFrameRef = useRef<HTMLInputElement>(null)
 
+  // 初期化完了フラグ
+  const isInitialized = useRef(false)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 設定保存フィードバック（デバウンス）
+  const showSaveFeedback = useCallback(() => {
+    if (!isInitialized.current) return
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      toast.success('設定を保存しました', {
+        duration: 1500,
+        position: 'bottom-center',
+      })
+    }, 800)
+  }, [])
+
   // 設定変更時にストアに保存
   useEffect(() => {
     store.setActiveMode(activeMode)
+    showSaveFeedback()
   }, [activeMode])
   useEffect(() => {
     store.setModel(model)
+    showSaveFeedback()
   }, [model])
   useEffect(() => {
     store.setQuality(quality)
+    showSaveFeedback()
   }, [quality])
   useEffect(() => {
     store.setDuration(duration)
+    showSaveFeedback()
   }, [duration])
   useEffect(() => {
     store.setAspect(aspect)
+    showSaveFeedback()
   }, [aspect])
   useEffect(() => {
     store.setEnableAudioSync(enableAudioSync)
+    showSaveFeedback()
   }, [enableAudioSync])
+
+  // 初期化完了を少し遅延させる（初回の自動保存メッセージを防ぐ）
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      isInitialized.current = true
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [])
 
   const selectedModel = modelOptions.find((m) => m.id === model)
 
@@ -216,14 +250,44 @@ export function GenerateInputPanel({
     return false
   }
 
-  // Cmd+Enter / Ctrl+Enter ショートカットで生成
+  // キーボードショートカット
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Enter / Ctrl+Enter で生成
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault()
         if (canGenerate()) {
           handleGenerate()
         }
+        return
+      }
+
+      // Escape でドロップダウンを閉じる
+      if (e.key === 'Escape') {
+        setShowModelDropdown(false)
+        setShowQualityDropdown(false)
+        setShowShortcutHelp(false)
+        return
+      }
+
+      // 数字キー 1-2 でモード切替（Cmd/Ctrl + 数字）
+      if ((e.metaKey || e.ctrlKey) && (e.key === '1' || e.key === '2')) {
+        e.preventDefault()
+        if (e.key === '1') setActiveMode('text-to-video')
+        if (e.key === '2') setActiveMode('image-to-video')
+        return
+      }
+
+      // Cmd/Ctrl + 矢印で品質切替
+      if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowUp') {
+        e.preventDefault()
+        setQuality('pro')
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'ArrowDown') {
+        e.preventDefault()
+        setQuality('standard')
+        return
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -281,6 +345,51 @@ export function GenerateInputPanel({
                   <span className="text-[11px] text-zinc-500 mt-0.5">{opt.description}</span>
                 </button>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Shortcuts Help */}
+        <div className="relative">
+          <button
+            onClick={() => setShowShortcutHelp(!showShortcutHelp)}
+            className="p-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg transition-colors"
+            title="キーボードショートカット"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+          {showShortcutHelp && (
+            <div className="absolute top-full right-0 mt-1 w-64 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 p-3 z-20">
+              <p className="text-xs font-medium text-zinc-300 mb-3">キーボードショートカット</p>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">生成開始</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">⌘↵</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">テキストモード</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">⌘1</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">画像モード</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">⌘2</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">高品質モード</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">⌘↑</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">標準モード</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">⌘↓</kbd>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">閉じる</span>
+                  <kbd className="px-1.5 py-0.5 bg-zinc-700 text-zinc-300 rounded">Esc</kbd>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -483,13 +592,31 @@ export function GenerateInputPanel({
           <div className="p-6 space-y-6">
             {/* Prompt Input */}
             <div>
-              <label className="block text-sm text-zinc-400 mb-2">プロンプト（必須）</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm text-zinc-400">プロンプト（必須）</label>
+                <span className={cn(
+                  'text-xs',
+                  prompt.length === 0 ? 'text-zinc-600' :
+                  prompt.length < 10 ? 'text-amber-500' :
+                  prompt.length > 200 ? 'text-amber-500' :
+                  'text-emerald-500'
+                )}>
+                  {prompt.length}/200
+                  {prompt.length > 0 && prompt.length < 10 && ' (もう少し詳しく)'}
+                  {prompt.length > 200 && ' (短めに)'}
+                </span>
+              </div>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="生成したい動画の内容を詳しく説明してください..."
-                className="w-full h-40 bg-zinc-800 text-white placeholder-zinc-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
+                placeholder="例: 商品が回転しながら光が当たり、美しく輝く様子を撮影"
+                className="w-full h-32 bg-zinc-800 text-white placeholder-zinc-600 rounded-xl p-4 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
               />
+              {prompt.length === 0 && (
+                <p className="text-xs text-zinc-500 mt-2">
+                  動画に入れたい動き・シーン・雰囲気を説明してください
+                </p>
+              )}
             </div>
 
             {/* Aspect Ratio Selection */}

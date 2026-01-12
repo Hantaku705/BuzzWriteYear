@@ -189,6 +189,25 @@
   - React Queryフック（`useCustomAvatar.ts`）
   - UIコンポーネント（`PhotoAvatarCreator`, `VideoAvatarCreator`）
   - 専用ページ（`/generate/heygen/custom`）
+- [x] **VISION.md作成・/user-fbスキル大幅強化（セッション35）**
+  - `VISION.md`: プロダクトビジョン・開発指示書（ミッション、Core Value、ターゲットユーザー）
+  - `/user-fb`スキル: 7→11 Subagentに拡張
+    - vision-alignment: VISION.md適合度評価
+    - core-flow-analyzer: コアフロー実装評価
+    - anti-pattern-checker: 禁止事項チェック
+    - n1-interview: N1インタビュー風定性分析（3ペルソナ、感情の流れ、離脱リスク）
+  - レポート形式強化: VISION適合スコア、N1インタビューサマリー追加
+- [x] **/user-fb PDCA 4サイクル完了・全目標達成（セッション36）**
+  - **初心者スコア: 68 → 80** (+12) ✅ 目標達成
+  - **中級者スコア: 60 → 76** (+16) ✅ 目標達成
+  - **上級者スコア: 67 → 75** (+8) ✅ 目標達成
+  - **禁止事項違反: 6件 → 0件** ✅ 完全解消
+  - **総合中毒性: 6.6/10 → 7.7/10** ✅ 目標達成
+  - 実施改善:
+    - Cycle 1: Coming Soon削除、ProductForm簡素化、GenerateInputStore作成、専門用語説明追加
+    - Cycle 2: 「準備中」モード削除、FFmpegプレビュー修正、Cmd+Enterショートカット、自動保存フィードバック
+    - Cycle 3: プロンプト文字数カウント・色分けガイダンス、ショートカットヘルプUI
+    - Cycle 4: 追加ショートカット6種（Cmd+1/2, Cmd+↑/↓, Esc）
 
 ### 作業中のタスク
 - なし
@@ -233,15 +252,69 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-なし
+M .claude/commands/user-fb.md
+M HANDOFF.md
+M src/components/generate/GenerateInputPanel.tsx
+?? .claude/user-feedback/2026-01-12-v4-final.md
 ```
 
 ## 最新コミット
 ```
-31674fb feat(heygen): add custom avatar creation feature
+8336981 docs: add VISION.md and enhance /user-fb skill with VISION alignment
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション36）
+- **/user-fb PDCA 4サイクル完了・全目標達成**
+  - 目標: 初心者80+、中級者75+、上級者75+、禁止事項違反0件
+  - 結果: 全目標達成
+- **Cycle 1: 基盤改善**
+  - Coming Soon/disabledボタン削除（analytics, templates, tools）
+  - ProductFormのLLM分析フィールド簡素化
+  - エラーメッセージに具体的対策追加
+  - GenerateInputStore作成（設定永続化）
+  - 専門用語に説明文追加
+- **Cycle 2: UX向上**
+  - 「準備中」モード完全削除（GenerateInputPanel）
+  - FFmpegプレビューボタン修正（templates/page.tsx）
+  - Cmd+Enterショートカット実装
+  - 自動保存フィードバック（デバウンスされたトースト通知）
+- **Cycle 3: 初心者向け強化**
+  - プロンプト入力改善（文字数カウント、色分け、ガイダンス）
+  - ショートカットヘルプ追加（?ボタン + ポップアップ）
+- **Cycle 4: 上級者向け強化**
+  - 追加ショートカット実装
+    - Cmd+1: テキストモード切替
+    - Cmd+2: 画像モード切替
+    - Cmd+↑: 高品質モード
+    - Cmd+↓: 標準モード
+    - Esc: ドロップダウン閉じる
+  - ショートカットヘルプを6項目に拡充
+- **最終レポート作成**
+  - `.claude/user-feedback/2026-01-12-v4-final.md`
+
+### 2026-01-12（セッション35）
+- **VISION.md 作成**
+  - プロダクトビジョン・開発指示書を作成
+  - 解決したい課題（動画制作コスト、クリエイティブ検証、PDCA、属人化）
+  - Core Value: UX中毒性 > 操作の快感 > フィードバック > シンプルさ
+  - ターゲットユーザー: 初心者(60/100)、中級者(61/100)、上級者(72/100)
+  - コアフロー: 商品登録→動画生成→バリアント生成→投稿→分析→最適化
+- **/user-fb スキル大幅強化（7→11 Subagent）**
+  - vision-alignment: VISION.md適合度評価（ミッション/Core Value/ターゲット）
+  - core-flow-analyzer: コアフロー実装評価（各ステップの実装度）
+  - anti-pattern-checker: 禁止事項チェック（VISION.md §9違反検出）
+  - n1-interview: N1インタビュー風定性分析（最重要追加）
+    - 3ペルソナ（初心者A、中級者B、上級者C）
+    - 一人称の体験語り
+    - 感情の流れ（絵文字表現）
+    - 離脱リスク・改善優先度
+- **レポート形式強化**
+  - VISION適合スコアセクション追加
+  - N1インタビューサマリーテーブル追加
+  - 各Subagentに「ユーザーの声（推定）」セクション追加
+- **コミット**: `8336981 docs: add VISION.md and enhance /user-fb skill with VISION alignment`
 
 ### 2026-01-12（セッション34）
 - **HeyGenカスタムアバター機能実装**
