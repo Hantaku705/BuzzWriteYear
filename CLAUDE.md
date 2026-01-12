@@ -103,6 +103,33 @@ REDIS_URL=
 2. SQL Editorで `supabase/combined_migration.sql` 実行
 3. `.env.local` に認証情報設定
 
+### Supabase SQL実行（Claude Codeから直接実行する場合）
+
+**制限事項:** 現在の環境変数では、Claude CodeがDDL（CREATE TABLE等）を直接実行できません。
+
+| 認証情報 | 用途 | DDL実行 |
+|---------|------|---------|
+| `SUPABASE_SERVICE_ROLE_KEY` | REST API経由のデータ操作 | 不可 |
+| `DATABASE_URL` | psql直接接続 | **可能** |
+| `SUPABASE_ACCESS_TOKEN` | Supabase CLI/Management API | **可能** |
+
+**Claude CodeからSQL実行を有効にするには:**
+
+```bash
+# オプション1: DATABASE_URLを追加（推奨）
+# Supabase Dashboard > Settings > Database > Connection string からコピー
+DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT_REF].supabase.co:5432/postgres
+
+# オプション2: Supabase Access Tokenを追加
+# supabase.com/dashboard > Account > Access Tokens で生成
+SUPABASE_ACCESS_TOKEN=sbp_xxxxx
+```
+
+**手動実行（Dashboard経由）:**
+1. https://supabase.com/dashboard にアクセス
+2. プロジェクト選択 → SQL Editor
+3. SQLを貼り付けて Run
+
 ### ワーカー起動（ローカル）
 
 ```bash
@@ -315,6 +342,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | スキル | 説明 |
 |--------|------|
 | `/reco` | **10 subagent並列分析・UX中毒性最優先（engagement-analyzer追加）** |
+| `/error` | **全ページのエラー検出・自動修正（3 subagent並列）** |
 | `/verify-worker-deployment` | ワーカーデプロイ検証（ローカル〜本番） |
 | `/validate-api-integration` | API統合検証（Kling, TikTok, HeyGen等） |
 | `/deploy-verify` | Vercel+Render統合デプロイ検証 |

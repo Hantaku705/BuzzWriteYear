@@ -162,11 +162,17 @@
   - スタンドアロン生成対応（productIdオプション化）
   - Supabase Storage画像アップロード統合
   - 生成進捗ポーリング・動画プレビュー
+- [x] **/error スキル作成（セッション31）**
+  - 全ページのエラー検出・自動修正スキル
+  - 4 Phase構造（ビルド→スキャン→分類→修正）
+  - 3つのsubagent並列実行でページスキャン
+  - 7段階の優先順位付けエラー分類
 
 ### 作業中のタスク
 - **TikTok投稿機能UI実装中**
   - アカウント連携・投稿UI作成中
   - 新規ファイル多数（hooks, components, api routes）
+  - HeyGen API追加（未コミット）
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -208,25 +214,50 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
+ M CLAUDE.md
  M src/app/(dashboard)/videos/[id]/page.tsx
  M src/workers/tiktok-poster.ts
  M supabase/combined_migration.sql
 ?? howtokling.md
 ?? src/app/api/tiktok/accounts/
 ?? src/app/api/tiktok/post/
+?? src/app/api/videos/heygen/
 ?? src/components/tiktok/
 ?? src/hooks/useTikTokAccounts.ts
 ?? src/hooks/useTikTokPost.ts
 ?? src/lib/api/tiktok.ts
 ?? src/types/tiktok.ts
+?? supabase/tiktok_posts_migration.sql
 ```
 
 ## 最新コミット
 ```
-a55f0ae docs: update session 29 handoff - /generate page with Kling AI UI
+d35aedb docs: update session 30 handoff - TikTok posting UI in progress
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション31）
+- **/error スキル作成**
+  - 全ページのエラー検出・自動修正スキル
+  - `~/.claude/commands/error.md` に配置
+  - 構造:
+    - Phase 1: ビルドチェック（TypeScript型エラー検出）
+    - Phase 2: 3つのsubagent並列実行でページスキャン
+    - Phase 3: エラー分類・優先順位付け（7段階）
+    - Phase 4: 自動修正
+    - Phase 5: 検証
+  - 検出対象:
+    - TypeScript型エラー
+    - null/undefinedアクセス
+    - APIエラーハンドリング未実装
+    - 型の重複定義
+    - 未定義環境変数
+    - 未使用インポート
+    - useEffect依存配列の問題
+- **既存スキルパターン調査**
+  - 15スキル（ユーザーレベル）の構造分析
+  - test-and-fix.md, reco.md を参考に設計
 
 ### 2026-01-12（セッション30）
 - **/generate ページAPI接続完了（セッション29続き）**
