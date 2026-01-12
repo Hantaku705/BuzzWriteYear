@@ -1489,7 +1489,7 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
                     設定を変更して再試行
                   </Button>
                   <Button
-                    onClick={() => onClose?.()}
+                    onClick={() => onOpenChange(false)}
                     variant="ghost"
                     size="sm"
                     className="text-zinc-400"
