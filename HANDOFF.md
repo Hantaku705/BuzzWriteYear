@@ -164,7 +164,9 @@
   - 生成進捗ポーリング・動画プレビュー
 
 ### 作業中のタスク
-- なし
+- **TikTok投稿機能UI実装中**
+  - アカウント連携・投稿UI作成中
+  - 新規ファイル多数（hooks, components, api routes）
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -206,15 +208,41 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
+ M src/app/(dashboard)/videos/[id]/page.tsx
+ M src/workers/tiktok-poster.ts
+ M supabase/combined_migration.sql
 ?? howtokling.md
+?? src/app/api/tiktok/accounts/
+?? src/app/api/tiktok/post/
+?? src/components/tiktok/
+?? src/hooks/useTikTokAccounts.ts
+?? src/hooks/useTikTokPost.ts
+?? src/lib/api/tiktok.ts
+?? src/types/tiktok.ts
 ```
 
 ## 最新コミット
 ```
-9320fcb feat(generate): connect /generate page to Kling API
+a55f0ae docs: update session 29 handoff - /generate page with Kling AI UI
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション30）
+- **/generate ページAPI接続完了（セッション29続き）**
+  - useVideoStatusのrefetchIntervalオプション修正
+  - KlingJobData.productIdオプショナル化
+  - ビルド成功・デプロイ完了
+- **TikTok投稿機能UI実装開始**
+  - 新規ファイル作成（未コミット）:
+    - `src/types/tiktok.ts`: TikTok型定義
+    - `src/lib/api/tiktok.ts`: API関数
+    - `src/hooks/useTikTokAccounts.ts`: アカウント管理フック
+    - `src/hooks/useTikTokPost.ts`: 投稿フック
+    - `src/components/tiktok/`: UIコンポーネント
+    - `src/app/api/tiktok/accounts/`: アカウントAPI
+    - `src/app/api/tiktok/post/`: 投稿API
+  - 動画詳細ページにTikTok投稿ボタン追加中
 
 ### 2026-01-11（セッション29）
 - **/generate 専用ページ作成（Kling AI UI模倣）**
