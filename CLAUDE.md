@@ -161,18 +161,19 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | ファイル | 役割 |
 |----------|------|
 | `src/app/(dashboard)/` | ダッシュボードページ群 |
-| `src/app/(generate)/` | **動画生成専用ページ（Kling AI風UI）** |
+| `src/app/(generate)/` | **動画生成専用ページ（Kling AI風UI、/generate/heygen/custom）** |
 | `src/components/generate/` | **動画生成コンポーネント（GenerateSidebar, GenerateInputPanel, GeneratePreviewPanel）** |
 | `src/app/api/videos/generate/` | 動画生成APIエンドポイント |
 | `src/app/api/tiktok/` | TikTok OAuth APIエンドポイント |
 | `src/components/layout/` | Sidebar, Header |
 | `src/components/product/` | 商品関連コンポーネント |
 | `src/components/video/` | 動画プレビュー（RemotionPreview, VideoGenerateModal, VariantGenerateModal） |
+| `src/components/video/heygen/` | **HeyGenカスタムアバターUI（PhotoAvatarCreator, VideoAvatarCreator）** |
 | `src/components/analytics/` | 分析ダッシュボードコンポーネント |
 | `src/components/auth/` | 認証フォームコンポーネント |
 | `src/app/(auth)/` | 認証ページ（login, signup, callback） |
 | `src/app/(dashboard)/videos/[id]/` | 動画詳細ページ |
-| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useOptimizedUpload, useGenerateVideo, useVideoStatus） |
+| `src/hooks/` | カスタムフック（useAuth, useProducts, useVideos, useStats, useAnalytics, useUpload, useOptimizedUpload, useGenerateVideo, useVideoStatus, **useCustomAvatar**） |
 | `src/store/videoSettingsStore.ts` | **動画生成設定の永続化ストア（Zustand + localStorage）** |
 | `src/lib/api/` | API関数（products, videos, stats, analytics） |
 | `src/lib/query/` | TanStack Query設定 |
@@ -184,7 +185,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/lib/video/ffmpeg/` | FFmpeg動画処理（UGC加工、トリミング、結合、字幕、コーデック変換） |
 | `src/lib/video/pipeline.ts` | 動画処理パイプライン（Remotion→FFmpeg→最適化） |
 | `src/lib/video/variants.ts` | A/Bテスト用バリアント一括生成 |
-| `src/lib/video/heygen/` | HeyGen APIクライアント |
+| `src/lib/video/heygen/` | HeyGen APIクライアント（**client.ts, custom-avatar.ts**） |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
 | `scripts/analyze-video.ts` | Gemini 2.0 Video API動画分析スクリプト |
@@ -242,7 +243,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | video-pipeline | 動画パイプライン処理 |
 | video-variants | A/Bテストバリアント生成 |
 | tiktok-posting | TikTok投稿 |
-| analytics-collection | 分析データ収集 |
+| analytics-collection | 分析データ収集 |\n| batch-generation | バッチ動画生成（HeyGen/Kling） |
 
 ---
 
@@ -256,7 +257,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | video_analytics | 分析データ（時系列） |
 | schedules | 投稿スケジュール |
 | oauth_states | TikTok OAuth状態管理 |
-| tiktok_accounts | TikTokアカウント情報 |
+| tiktok_accounts | TikTokアカウント情報 |\n| tiktok_posts | TikTok投稿履歴 |\n| batch_jobs | バッチジョブ管理 |\n| batch_job_items | バッチジョブアイテム |
 
 ---
 
@@ -275,6 +276,8 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/api/videos/kling/edit` | POST/GET | **NEW** V2V Edit（自然言語動画編集） |
 | `/api/videos/kling/background` | POST/GET | **NEW** Background Replace（背景変更） |
 | `/api/videos/kling/inpaint` | POST/GET | **NEW** Inpaint（オブジェクト削除） |
+| `/api/videos/heygen/avatar` | POST/GET | **NEW** カスタムアバター作成・一覧 |
+| `/api/videos/heygen/avatar/[id]/status` | GET | **NEW** アバタートレーニング状態 |
 | `/api/videos/[id]/status` | GET | 動画生成進捗取得 |
 | `/api/videos/[id]/cancel` | POST | 動画生成キャンセル |
 | `/api/scrape` | POST | 商品URL自動入力（スクレイピング+LLM分析） |

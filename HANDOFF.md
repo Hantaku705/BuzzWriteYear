@@ -173,12 +173,16 @@
   - user.email: null安全性修正（settings/page.tsx）
 - [x] **/confirm 本番テスト実行・14/14 Pass（セッション32）**
 - [x] **HeyGen生成ページ作成（/generate/heygen）**
+- [x] **バッチ動画生成機能実装（セッション33）**
+  - TikTok投稿API・UIコンポーネント
+  - HeyGen UI統合（サイドバー追加、ワーカー修正）
+  - バッチ生成API（POST/GET）
+  - バッチワーカー（HeyGen/Kling両対応）
+  - CSV入力対応（ドラッグ&ドロップ）
+  - DBマイグレーション（batch_jobs, batch_job_items, tiktok_posts）
 
 ### 作業中のタスク
-- **TikTok投稿機能UI実装中**
-  - アカウント連携・投稿UI作成中
-  - 新規ファイル多数（hooks, components, api routes）
-  - HeyGen API追加（未コミット）
+- なし
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -220,37 +224,37 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
- M src/components/generate/GenerateSidebar.tsx
- M src/lib/queue/client.ts
- M src/workers/heygen-generator.ts
- M src/workers/tiktok-poster.ts
- M supabase/combined_migration.sql
-?? howtokling.md
-?? src/app/api/tiktok/accounts/
-?? src/app/api/tiktok/post/
-?? src/app/api/videos/batch/
-?? src/app/api/videos/heygen/
-?? src/components/tiktok/
-?? src/components/video/BatchGenerateModal.tsx
-?? src/hooks/useBatchGenerate.ts
-?? src/hooks/useHeygenAssets.ts
-?? src/hooks/useHeygenGenerate.ts
-?? src/hooks/useTikTokAccounts.ts
-?? src/hooks/useTikTokPost.ts
-?? src/lib/api/tiktok.ts
-?? src/lib/video/heygen/custom-avatar.ts
-?? src/types/batch.ts
-?? src/types/tiktok.ts
-?? supabase/batch_jobs_migration.sql
-?? supabase/tiktok_posts_migration.sql
+なし
 ```
 
 ## 最新コミット
 ```
-c0db8e7 fix: add error handling and useEffect safety improvements
+2e52d81 feat(batch): add batch video generation with TikTok/HeyGen integration
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション33）
+- **バッチ動画生成機能（Phase 3）実装完了**
+  - 前回のセッションで作成していたTikTok投稿・HeyGen UI機能をコミット
+  - バッチ生成の完全な実装:
+    - `src/app/api/videos/batch/route.ts`: バッチ作成・ステータス取得API
+    - `src/components/video/BatchGenerateModal.tsx`: 4ステップモーダル
+    - `src/hooks/useBatchGenerate.ts`: バッチ操作・CSVパースフック
+    - `src/types/batch.ts`: 型定義
+    - `src/workers/batch.worker.ts`: バッチワーカー
+    - `src/lib/queue/client.ts`: BATCH_GENERATION キュー追加
+    - `scripts/start-worker.ts`: バッチワーカー統合
+  - DBマイグレーション（batch_jobs, batch_job_items）実行済み
+- **HeyGen UI統合**
+  - GenerateSidebarに「HeyGen」リンク追加（NEWバッジ付き）
+  - heygen-generator.ts: DB更新・Supabase Storage対応
+- **TikTok投稿API・UI**
+  - `/api/tiktok/accounts`: アカウント一覧取得
+  - `/api/tiktok/post`: 投稿作成・ステータス取得
+  - TikTokPostModalコンポーネント
+- **本番E2Eテスト: 9/9 Pass**
+- **コミット**: `2e52d81 feat(batch): add batch video generation with TikTok/HeyGen integration`
 
 ### 2026-01-12（セッション32）
 - **/error スキル実行**
