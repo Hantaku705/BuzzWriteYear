@@ -159,11 +159,13 @@ export default function SettingsPage() {
                 </div>
                 <Button
                   variant={connection.connected ? 'outline' : 'default'}
-                  className={connection.connected ? 'border-zinc-700' : 'bg-pink-500 hover:bg-pink-600'}
+                  className={`${connection.connected ? 'border-zinc-700' : 'bg-pink-500 hover:bg-pink-600'} ${
+                    connection.name === 'Supabase' ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                   disabled={connection.name === 'Supabase'}
                   onClick={() => handleConnect(connection.name)}
                 >
-                  {connection.connected ? '設定' : '接続'}
+                  {connection.name === 'Supabase' ? '自動接続' : connection.connected ? '設定' : '接続'}
                 </Button>
               </div>
               {index < connections.length - 1 && <Separator className="bg-zinc-800" />}

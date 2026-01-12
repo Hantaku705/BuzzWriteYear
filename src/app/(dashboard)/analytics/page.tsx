@@ -106,14 +106,10 @@ export default function AnalyticsPage() {
           <p className="text-zinc-400">動画パフォーマンスとGMV分析</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="border-zinc-700" disabled title="準備中">
+          <span className="inline-flex items-center px-3 py-2 text-sm text-zinc-400 bg-zinc-800 rounded-md">
             <Calendar className="mr-2 h-4 w-4" />
-            期間: 過去30日
-          </Button>
-          <Button variant="outline" className="border-zinc-700" disabled title="準備中">
-            <Download className="mr-2 h-4 w-4" />
-            レポート出力
-          </Button>
+            過去30日
+          </span>
         </div>
       </div>
 

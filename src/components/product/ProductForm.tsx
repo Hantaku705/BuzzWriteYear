@@ -157,8 +157,33 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
             )}
           </Button>
         </div>
+        {isScraping && (
+          <p className="text-xs text-zinc-400 mt-1">
+            サイトから商品情報を取得しています（通常10〜30秒）
+          </p>
+        )}
         {scrapeError && (
-          <p className="text-xs text-red-400 mt-1">{scrapeError}</p>
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 mt-2">
+            <p className="text-xs text-red-300 font-medium">情報取得に失敗しました</p>
+            <p className="text-xs text-red-400 mt-1">
+              {scrapeError.toLowerCase().includes('404') || scrapeError.toLowerCase().includes('not found')
+                ? 'URLが見つかりません。商品ページのURLを確認してください'
+                : scrapeError.toLowerCase().includes('timeout')
+                ? 'サイトの読み込みがタイムアウトしました。時間をおいて再度お試しください'
+                : scrapeError.toLowerCase().includes('network') || scrapeError.toLowerCase().includes('fetch')
+                ? 'ネットワークエラーが発生しました。接続を確認してください'
+                : 'URLから情報を自動取得できませんでした。手動で入力してください'}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="mt-2 text-red-400 hover:text-red-300 h-auto p-1 text-xs"
+              onClick={() => setProductUrl('')}
+            >
+              URLをクリアして手動入力
+            </Button>
+          </div>
         )}
       </div>
 
@@ -212,45 +237,29 @@ export function ProductForm({ onSuccess, productId, initialData }: ProductFormPr
         </div>
       </div>
 
-      {/* LLM分析フィールド */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="category" className="text-white">
-            カテゴリ
-          </Label>
-          <Input
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            placeholder="例: スキンケア"
-            className="bg-zinc-800 border-zinc-700"
-          />
+      {/* LLM分析フィールド（自動入力時のみ表示） */}
+      {(category || brand || targetAudience) && (
+        <div className="p-4 bg-zinc-800/30 rounded-lg border border-zinc-700/50">
+          <p className="text-xs text-zinc-400 mb-3">AI分析による自動取得情報</p>
+          <div className="flex flex-wrap gap-2">
+            {category && (
+              <span className="px-2 py-1 text-xs bg-zinc-700 text-zinc-300 rounded">
+                {category}
+              </span>
+            )}
+            {brand && (
+              <span className="px-2 py-1 text-xs bg-zinc-700 text-zinc-300 rounded">
+                {brand}
+              </span>
+            )}
+            {targetAudience && (
+              <span className="px-2 py-1 text-xs bg-zinc-700 text-zinc-300 rounded">
+                {targetAudience}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="brand" className="text-white">
-            ブランド名
-          </Label>
-          <Input
-            id="brand"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            placeholder="例: ADVANCED CLINICALS"
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="targetAudience" className="text-white">
-            ターゲット層
-          </Label>
-          <Input
-            id="targetAudience"
-            value={targetAudience}
-            onChange={(e) => setTargetAudience(e.target.value)}
-            placeholder="例: 30代女性"
-            className="bg-zinc-800 border-zinc-700"
-          />
-        </div>
-      </div>
+      )}
 
       {/* Features */}
       <div className="space-y-2">

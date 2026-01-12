@@ -395,7 +395,12 @@ export function VideoEditActions({
                       min={0}
                       max={1}
                       step={0.1}
-                      className="w-full mt-2"
+                      className="w-full mt-2 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-pink-500
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:bg-pink-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
+                        [&::-webkit-slider-thumb]:hover:bg-pink-400 [&::-webkit-slider-thumb]:transition-colors
+                        [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-pink-500
+                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
                     />
                   </div>
                 </>

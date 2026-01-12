@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Plus, Search, Package, Pencil, Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { Plus, Search, Package, Pencil, Trash2, RefreshCw, Loader2, AlertCircle, LogIn } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu,
@@ -73,9 +73,29 @@ export default function ProductsPage() {
     if (deletingProductId) {
       try {
         await deleteProduct.mutateAsync(deletingProductId)
-        toast.success('商品を削除しました')
-      } catch {
-        toast.error('削除に失敗しました')
+        toast.success('商品を削除しました', {
+          description: '関連する動画も一緒に削除されました',
+        })
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message.toLowerCase() : ''
+
+        if (errorMessage.includes('video') || errorMessage.includes('関連')) {
+          toast.error('削除に失敗しました', {
+            description: 'この商品に関連する動画がある場合、先に動画を削除してください',
+          })
+        } else if (errorMessage.includes('permission') || errorMessage.includes('権限')) {
+          toast.error('削除権限がありません', {
+            description: 'この商品を削除する権限がない可能性があります',
+          })
+        } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+          toast.error('ネットワークエラー', {
+            description: '接続を確認して、もう一度お試しください',
+          })
+        } else {
+          toast.error('削除に失敗しました', {
+            description: '時間をおいて再度お試しください',
+          })
+        }
       }
       setDeletingProductId(null)
     }
@@ -206,16 +226,37 @@ export default function ProductsPage() {
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-red-500 mb-2">データの読み込みに失敗しました</p>
-              <p className="text-sm text-zinc-500 mb-4">{String(error)}</p>
-              <Button
-                variant="outline"
-                onClick={() => refetch()}
-                className="border-zinc-700 hover:bg-zinc-800"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                再読み込み
-              </Button>
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <p className="text-red-400 font-medium mb-2">商品データの読み込みに失敗しました</p>
+              <p className="text-sm text-zinc-400 mb-4 max-w-md">
+                {error instanceof Error && error.message.includes('auth')
+                  ? 'ログインセッションが無効です。再度ログインしてください'
+                  : error instanceof Error && (error.message.includes('network') || error.message.includes('fetch'))
+                  ? 'ネットワーク接続を確認してください'
+                  : '一時的なエラーが発生しました。時間をおいて再度お試しください'}
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => refetch()}
+                  className="border-zinc-700 hover:bg-zinc-800"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  再読み込み
+                </Button>
+                {error instanceof Error && error.message.includes('auth') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = '/login'}
+                    className="border-zinc-700 hover:bg-zinc-800"
+                  >
+                    <LogIn className="mr-2 h-4 w-4" />
+                    ログインページへ
+                  </Button>
+                )}
+              </div>
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">

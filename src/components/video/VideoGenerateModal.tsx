@@ -637,6 +637,16 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
   const steps = getSteps()
   const currentStepIndex = steps.indexOf(step)
 
+  // ステップラベルの定義
+  const stepLabels: Record<Step, string> = {
+    mode: '生成方法',
+    template: 'テンプレート',
+    product: '商品選択',
+    params: '設定',
+    preview: 'プレビュー',
+    generating: '生成中',
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) resetForm(); onOpenChange(o) }}>
       <DialogContent className="bg-zinc-900 border-zinc-800 max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -644,28 +654,40 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
           <DialogTitle className="text-white flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-pink-500" />
             動画を生成
+            {step !== 'generating' && steps.length > 1 && (
+              <span className="text-sm font-normal text-zinc-400 ml-2">
+                ステップ {currentStepIndex + 1} / {steps.length}
+              </span>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Step indicator */}
-        {step !== 'generating' && (
-        <div className="flex items-center justify-center gap-2 py-4">
+        {/* Step indicator with labels */}
+        {step !== 'generating' && steps.length > 1 && (
+        <div className="flex items-center justify-center gap-1 py-4">
           {steps.map((s, i) => (
             <div key={s} className="flex items-center">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === s
-                    ? 'bg-pink-500 text-white'
-                    : currentStepIndex > i
-                    ? 'bg-pink-500/30 text-pink-300'
-                    : 'bg-zinc-800 text-zinc-500'
-                }`}
-              >
-                {i + 1}
+              <div className="flex flex-col items-center gap-1 min-w-[60px]">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                    step === s
+                      ? 'bg-pink-500 text-white'
+                      : currentStepIndex > i
+                        ? 'bg-pink-500/30 text-pink-300'
+                        : 'bg-zinc-800 text-zinc-500'
+                  }`}
+                >
+                  {currentStepIndex > i ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                </div>
+                <span className={`text-[10px] ${
+                  step === s ? 'text-pink-400' : 'text-zinc-500'
+                }`}>
+                  {stepLabels[s]}
+                </span>
               </div>
               {i < steps.length - 1 && (
                 <div
-                  className={`w-8 h-0.5 ${
+                  className={`w-6 h-0.5 -mt-4 ${
                     currentStepIndex > i
                       ? 'bg-pink-500/30'
                       : 'bg-zinc-800'
@@ -683,7 +705,9 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
             {/* クイック生成カード - 前回の設定がある場合のみ表示 */}
             {videoSettings.canQuickGenerate() && videoSettings.lastProductName && (
               <Card
-                className="cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 hover:border-green-500"
+                className="cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.97]
+                  bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/50 hover:border-green-500
+                  hover:shadow-lg hover:shadow-green-500/20 active:shadow-sm"
                 onClick={() => {
                   // 前回の設定で直接生成
                   handleQuickGenerate()
@@ -722,10 +746,10 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
             <p className="text-zinc-400 text-sm">生成方法を選択してください</p>
             <div className="grid grid-cols-2 gap-4">
               <Card
-                className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                className={`cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.97] ${
                   generationMode === 'kling'
-                    ? 'bg-pink-500/20 border-pink-500'
-                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
+                    ? 'bg-pink-500/20 border-pink-500 shadow-lg shadow-pink-500/20'
+                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800 hover:shadow-lg hover:shadow-pink-500/10'
                 }`}
                 onClick={() => setGenerationMode('kling')}
               >
@@ -746,10 +770,10 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
               </Card>
 
               <Card
-                className={`cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                className={`cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.97] ${
                   generationMode === 'remotion'
-                    ? 'bg-pink-500/20 border-pink-500'
-                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800'
+                    ? 'bg-pink-500/20 border-pink-500 shadow-lg shadow-pink-500/20'
+                    : 'bg-zinc-800/50 border-zinc-700 hover:bg-zinc-800 hover:shadow-md'
                 }`}
                 onClick={() => setGenerationMode('remotion')}
               >
@@ -774,7 +798,9 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
             {onOpenAdvancedModal && (
               <div className="pt-4 border-t border-zinc-800">
                 <Card
-                  className="cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50"
+                  className="cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.97]
+                    bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50
+                    hover:shadow-lg hover:shadow-purple-500/20 active:shadow-sm"
                   onClick={() => {
                     resetForm()
                     onOpenChange(false)
@@ -1024,17 +1050,17 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
                     </div>
                   </div>
 
-                  {/* 終了フレーム（O1デュアルキーフレーム） */}
+                  {/* 終了画像 */}
                   <div>
-                    <Label>終了フレーム画像（任意・O1モード）</Label>
+                    <Label>終了画像（任意）</Label>
                     <Input
                       value={endKeyframeImage}
                       onChange={(e) => setEndKeyframeImage(e.target.value)}
-                      placeholder="終了画像のURL（開始→終了の補間動画を生成）"
+                      placeholder="終了画像のURL"
                       className="bg-zinc-800 border-zinc-700 mt-1"
                     />
                     <p className="text-xs text-zinc-500 mt-1">
-                      開始画像と終了画像を指定すると、AIが自然な変化を補間します
+                      開始→終了の変化をAIが自然に補間します
                     </p>
                   </div>
 
@@ -1117,7 +1143,12 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
 
                   <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
                     <p className="text-sm text-yellow-200">
-                      AI動画生成には1〜3分かかります。生成完了後、動画一覧に表示されます。
+                      生成時間の目安: {quality === 'pro'
+                        ? klingDuration === 10 ? '約4〜8分' : '約2〜4分'
+                        : klingDuration === 10 ? '約2〜4分' : '約1〜2分'}
+                    </p>
+                    <p className="text-xs text-yellow-300/70 mt-1">
+                      生成完了後、動画一覧に表示されます
                     </p>
                   </div>
 
@@ -1365,6 +1396,12 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
                     {videoStatus?.progress || 0}%
                   </span>
                 </div>
+                {/* 処理時間の見積もり */}
+                <p className="text-xs text-zinc-500 text-center pt-1">
+                  目安: {quality === 'pro'
+                    ? klingDuration === 10 ? '4〜8分' : '2〜4分'
+                    : klingDuration === 10 ? '2〜4分' : '1〜2分'}
+                </p>
               </div>
             )}
 
@@ -1423,12 +1460,43 @@ export function VideoGenerateModal({ open, onOpenChange, onOpenVariantModal, onO
               </div>
             )}
 
-            {/* 失敗メッセージ */}
+            {/* 失敗メッセージ - 具体的な対策を提示 */}
             {videoStatus?.status === 'failed' && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-center">
-                <p className="text-sm text-red-200">
-                  再度お試しください。3秒後に自動で閉じます...
-                </p>
+              <div className="space-y-3">
+                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <p className="text-sm text-red-200 font-medium mb-2">
+                    生成に失敗しました
+                  </p>
+                  <p className="text-xs text-red-300/80 mb-3">
+                    {videoStatus?.message || '原因不明のエラーが発生しました'}
+                  </p>
+                  <div className="text-xs text-zinc-400 space-y-1">
+                    <p className="font-medium text-zinc-300">対処方法:</p>
+                    <ul className="list-disc list-inside space-y-0.5">
+                      <li>画像が正しくアップロードされているか確認</li>
+                      <li>プロンプトを短くして再試行</li>
+                      <li>別の画像で試してみる</li>
+                    </ul>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setStep('mode')}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 border-zinc-600"
+                  >
+                    設定を変更して再試行
+                  </Button>
+                  <Button
+                    onClick={() => onClose?.()}
+                    variant="ghost"
+                    size="sm"
+                    className="text-zinc-400"
+                  >
+                    閉じる
+                  </Button>
+                </div>
               </div>
             )}
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Sparkles,
   Plus,
@@ -14,8 +14,6 @@ import {
   Upload,
   Volume2,
   Wand2,
-  Layers,
-  Move,
   RefreshCw,
   ImagePlus,
   Loader2,
@@ -23,7 +21,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { useGenerateInputStore } from '@/store/generateInputStore'
 import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
 
 type ModeType = 'text-to-video' | 'image-to-video' | 'motion-control' | 'elements'
@@ -49,32 +49,30 @@ interface GenerateInputPanelProps {
 const modes = [
   { id: 'text-to-video' as ModeType, name: 'テキストから動画へ', icon: Wand2 },
   { id: 'image-to-video' as ModeType, name: '画像から動画へ', icon: ImagePlus, badge: '10%OFF' },
-  { id: 'motion-control' as ModeType, name: 'モーションコントロール', icon: Move },
-  { id: 'elements' as ModeType, name: 'エレメンツ', icon: Layers },
 ]
 
-const modelOptions: { id: KlingModelVersion; name: string; badge?: string; hasAudio?: boolean }[] = [
-  { id: '2.6', name: '動画 2.6', badge: 'Audio', hasAudio: true },
-  { id: '2.5', name: '動画 2.5 Turbo' },
-  { id: '2.1', name: '動画 2.1' },
-  { id: '1.6', name: '動画 1.6' },
-  { id: '1.5', name: '動画 1.5' },
+const modelOptions: { id: KlingModelVersion; name: string; badge?: string; hasAudio?: boolean; description: string }[] = [
+  { id: '2.6', name: '動画 2.6', badge: 'Audio', hasAudio: true, description: '最新モデル。音声生成に対応。最も高品質' },
+  { id: '2.5', name: '動画 2.5 Turbo', description: '高速生成。バランスの取れた品質' },
+  { id: '2.1', name: '動画 2.1', description: '安定した品質。コストパフォーマンス◎' },
+  { id: '1.6', name: '動画 1.6', description: '軽量モデル。シンプルな動画向け' },
+  { id: '1.5', name: '動画 1.5', description: '基本モデル。低コストで試したい時に' },
 ]
 
-const qualityOptions: { id: KlingQuality; name: string; badge?: string }[] = [
-  { id: 'pro', name: '高品質モード', badge: 'VIP' },
-  { id: 'standard', name: '標準' },
+const qualityOptions: { id: KlingQuality; name: string; badge?: string; description: string }[] = [
+  { id: 'pro', name: '高品質モード', badge: 'VIP', description: 'ディテールが細かく、滑らかな動き' },
+  { id: 'standard', name: '標準', description: '十分な品質で高速生成' },
 ]
 
-const durationOptions: { value: 5 | 10; label: string }[] = [
-  { value: 5, label: '5s' },
-  { value: 10, label: '10s' },
+const durationOptions: { value: 5 | 10; label: string; description: string }[] = [
+  { value: 5, label: '5s', description: 'ショート動画に最適' },
+  { value: 10, label: '10s', description: '長めの商品紹介に' },
 ]
 
-const aspectOptions: { value: KlingAspectRatio; label: string }[] = [
-  { value: '9:16', label: '9:16' },
-  { value: '16:9', label: '16:9' },
-  { value: '1:1', label: '1:1' },
+const aspectOptions: { value: KlingAspectRatio; label: string; description: string }[] = [
+  { value: '9:16', label: '9:16', description: 'TikTok・Instagram向け縦動画' },
+  { value: '16:9', label: '16:9', description: 'YouTube向け横動画' },
+  { value: '1:1', label: '1:1', description: 'Instagram投稿向け正方形' },
 ]
 
 export function GenerateInputPanel({
@@ -84,14 +82,17 @@ export function GenerateInputPanel({
   generationProgress,
   onGenerate,
 }: GenerateInputPanelProps) {
-  const [activeMode, setActiveMode] = useState<ModeType>('image-to-video')
-  const [model, setModel] = useState<KlingModelVersion>('2.6')
-  const [quality, setQuality] = useState<KlingQuality>('pro')
-  const [duration, setDuration] = useState<5 | 10>(5)
-  const [aspect, setAspect] = useState<KlingAspectRatio>('9:16')
+  // 永続化されたストアから設定を読み込み
+  const store = useGenerateInputStore()
+
+  const [activeMode, setActiveMode] = useState<ModeType>(store.activeMode)
+  const [model, setModel] = useState<KlingModelVersion>(store.model)
+  const [quality, setQuality] = useState<KlingQuality>(store.quality)
+  const [duration, setDuration] = useState<5 | 10>(store.duration)
+  const [aspect, setAspect] = useState<KlingAspectRatio>(store.aspect)
   const [showModelDropdown, setShowModelDropdown] = useState(false)
   const [showQualityDropdown, setShowQualityDropdown] = useState(false)
-  const [enableAudioSync, setEnableAudioSync] = useState(true)
+  const [enableAudioSync, setEnableAudioSync] = useState(store.enableAudioSync)
   const [startFrame, setStartFrame] = useState<string | null>(null)
   const [startFrameUrl, setStartFrameUrl] = useState<string | null>(null)
   const [endFrame, setEndFrame] = useState<string | null>(null)
@@ -99,6 +100,26 @@ export function GenerateInputPanel({
   const [isUploading, setIsUploading] = useState(false)
   const startFrameRef = useRef<HTMLInputElement>(null)
   const endFrameRef = useRef<HTMLInputElement>(null)
+
+  // 設定変更時にストアに保存
+  useEffect(() => {
+    store.setActiveMode(activeMode)
+  }, [activeMode])
+  useEffect(() => {
+    store.setModel(model)
+  }, [model])
+  useEffect(() => {
+    store.setQuality(quality)
+  }, [quality])
+  useEffect(() => {
+    store.setDuration(duration)
+  }, [duration])
+  useEffect(() => {
+    store.setAspect(aspect)
+  }, [aspect])
+  useEffect(() => {
+    store.setEnableAudioSync(enableAudioSync)
+  }, [enableAudioSync])
 
   const selectedModel = modelOptions.find((m) => m.id === model)
 
@@ -195,6 +216,20 @@ export function GenerateInputPanel({
     return false
   }
 
+  // Cmd+Enter / Ctrl+Enter ショートカットで生成
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (canGenerate()) {
+          handleGenerate()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleGenerate, canGenerate])
+
   return (
     <div className="flex flex-col w-[520px] border-r border-zinc-800 bg-zinc-900">
       {/* Header with Model Selection */}
@@ -216,7 +251,7 @@ export function GenerateInputPanel({
             <ChevronDown className="h-4 w-4 text-zinc-500" />
           </button>
           {showModelDropdown && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 overflow-hidden z-20">
+            <div className="absolute top-full left-0 mt-1 w-64 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 overflow-hidden z-20">
               {modelOptions.map((opt) => (
                 <button
                   key={opt.id}
@@ -225,19 +260,25 @@ export function GenerateInputPanel({
                     setShowModelDropdown(false)
                   }}
                   className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-700 transition-colors',
-                    model === opt.id ? 'text-emerald-400' : 'text-zinc-300'
+                    'w-full flex flex-col items-start px-3 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                    model === opt.id ? 'bg-zinc-700/50' : ''
                   )}
                 >
-                  <span>{opt.name}</span>
-                  {opt.badge && (
-                    <span className={cn(
-                      'px-1.5 py-0.5 text-[10px] rounded',
-                      opt.badge === 'Audio' ? 'bg-emerald-500 text-white' : 'bg-pink-500 text-white'
-                    )}>
-                      {opt.badge}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 w-full">
+                    <span className={model === opt.id ? 'text-emerald-400' : 'text-zinc-300'}>{opt.name}</span>
+                    {opt.badge && (
+                      <span className={cn(
+                        'px-1.5 py-0.5 text-[10px] rounded',
+                        opt.badge === 'Audio' ? 'bg-emerald-500 text-white' : 'bg-pink-500 text-white'
+                      )}>
+                        {opt.badge}
+                      </span>
+                    )}
+                    {model === opt.id && (
+                      <span className="ml-auto text-emerald-400">✓</span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 mt-0.5">{opt.description}</span>
                 </button>
               ))}
             </div>
@@ -364,8 +405,8 @@ export function GenerateInputPanel({
                   ) : (
                     <>
                       <ImagePlus className="h-8 w-8 text-zinc-600 mb-2" />
-                      <span className="text-sm text-zinc-500">エンドフレーム（任意）</span>
-                      <span className="text-xs text-zinc-600">O1デュアルキーフレーム</span>
+                      <span className="text-sm text-zinc-500">終了画像（任意）</span>
+                      <span className="text-xs text-zinc-600 text-center px-2">開始→終了をAIが補間</span>
                     </>
                   )}
                 </button>
@@ -474,21 +515,25 @@ export function GenerateInputPanel({
 
             {/* Prompt Suggestions */}
             <div className="space-y-2">
-              <span className="text-xs text-zinc-500">おすすめ：</span>
+              <span className="text-xs text-zinc-500">プロンプトの例：</span>
               <div className="flex flex-wrap gap-2">
-                {['奇妙な虚実', '感情映画', '庄園からの脱出', '猫耳少年'].map((suggestion) => (
+                {[
+                  { text: '商品が回転する', desc: '360度ビュー' },
+                  { text: '使用シーンを映す', desc: '日常感' },
+                  { text: '手に取って見せる', desc: 'UGC風' },
+                  { text: '効果を実演', desc: 'ビフォアフター' },
+                ].map((suggestion) => (
                   <button
-                    key={suggestion}
-                    onClick={() => setPrompt(suggestion)}
-                    className="px-3 py-1.5 bg-zinc-800 text-zinc-400 rounded-full text-sm hover:bg-zinc-700 hover:text-zinc-300 transition-colors"
+                    key={suggestion.text}
+                    onClick={() => setPrompt(suggestion.text)}
+                    className="group px-3 py-1.5 bg-zinc-800 text-zinc-400 rounded-full text-sm hover:bg-zinc-700 hover:text-zinc-300 transition-colors"
+                    title={suggestion.desc}
                   >
-                    {suggestion}
+                    {suggestion.text}
                   </button>
                 ))}
-                <button className="p-1.5 bg-zinc-800 text-zinc-500 rounded-full hover:bg-zinc-700 transition-colors">
-                  <RefreshCw className="h-4 w-4" />
-                </button>
               </div>
+              <p className="text-[10px] text-zinc-600">商品の魅力が伝わる動きを指定してください</p>
             </div>
 
             {/* Audio Toggle (2.6 only) */}
@@ -517,33 +562,6 @@ export function GenerateInputPanel({
           </div>
         )}
 
-        {/* Motion Control Mode */}
-        {activeMode === 'motion-control' && (
-          <div className="p-6 space-y-6">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Move className="h-12 w-12 text-zinc-600 mb-4" />
-              <h3 className="text-lg font-medium text-zinc-400 mb-2">モーションコントロール</h3>
-              <p className="text-sm text-zinc-500">
-                動画の動きやカメラワークを細かく制御できます
-              </p>
-              <p className="text-xs text-zinc-600 mt-2">Coming Soon</p>
-            </div>
-          </div>
-        )}
-
-        {/* Elements Mode */}
-        {activeMode === 'elements' && (
-          <div className="p-6 space-y-6">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Layers className="h-12 w-12 text-zinc-600 mb-4" />
-              <h3 className="text-lg font-medium text-zinc-400 mb-2">エレメンツ</h3>
-              <p className="text-sm text-zinc-500">
-                複数の画像要素を組み合わせて動画を生成します（最大7枚）
-              </p>
-              <p className="text-xs text-zinc-600 mt-2">Coming Soon</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Generation Progress */}
@@ -574,7 +592,7 @@ export function GenerateInputPanel({
             <ChevronDown className="h-4 w-4 text-zinc-500" />
           </button>
           {showQualityDropdown && (
-            <div className="absolute bottom-full left-0 mb-1 w-40 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 overflow-hidden z-10">
+            <div className="absolute bottom-full left-0 mb-1 w-56 bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 overflow-hidden z-10">
               {qualityOptions.map((opt) => (
                 <button
                   key={opt.id}
@@ -583,16 +601,22 @@ export function GenerateInputPanel({
                     setShowQualityDropdown(false)
                   }}
                   className={cn(
-                    'w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-zinc-700 transition-colors',
-                    quality === opt.id ? 'text-emerald-400' : 'text-zinc-300'
+                    'w-full flex flex-col items-start px-3 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                    quality === opt.id ? 'bg-zinc-700/50' : ''
                   )}
                 >
-                  <span>{opt.name}</span>
-                  {opt.badge && (
-                    <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded">
-                      {opt.badge}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2 w-full">
+                    <span className={quality === opt.id ? 'text-emerald-400' : 'text-zinc-300'}>{opt.name}</span>
+                    {opt.badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded">
+                        {opt.badge}
+                      </span>
+                    )}
+                    {quality === opt.id && (
+                      <span className="ml-auto text-emerald-400">✓</span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 mt-0.5">{opt.description}</span>
                 </button>
               ))}
             </div>
@@ -621,6 +645,7 @@ export function GenerateInputPanel({
         <Button
           onClick={handleGenerate}
           disabled={!canGenerate()}
+          title="Cmd+Enter / Ctrl+Enter で生成"
           className="px-10 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {isGenerating ? (
@@ -634,7 +659,10 @@ export function GenerateInputPanel({
               アップロード中...
             </span>
           ) : (
-            '生成'
+            <span className="flex items-center gap-2">
+              生成
+              <kbd className="px-1.5 py-0.5 text-[10px] bg-emerald-600 rounded">⌘↵</kbd>
+            </span>
           )}
         </Button>
       </div>

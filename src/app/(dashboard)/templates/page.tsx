@@ -194,7 +194,14 @@ export default function TemplatesPage() {
                     <div className="aspect-video bg-zinc-800 rounded-t-lg flex items-center justify-center relative overflow-hidden">
                       <Video className="h-12 w-12 text-zinc-600" />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button size="sm" className="bg-green-500 hover:bg-green-600">
+                        <Button
+                          size="sm"
+                          className="bg-green-500 hover:bg-green-600 active:scale-95 transition-all"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setPreviewTemplate(template)
+                          }}
+                        >
                           <Play className="mr-2 h-4 w-4" />
                           プレビュー
                         </Button>
@@ -222,25 +229,6 @@ export default function TemplatesPage() {
           </div>
         </div>
 
-        {/* Coming Soon - HeyGen */}
-        <div>
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Star className="h-5 w-5 text-blue-500" />
-            AIアバター テンプレート
-            <Badge variant="outline" className="ml-2 border-yellow-500/50 text-yellow-500">
-              Coming Soon
-            </Badge>
-          </h2>
-          <Card className="bg-zinc-900/50 border-zinc-800 border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Video className="h-12 w-12 text-zinc-700 mb-4" />
-              <p className="text-zinc-400">HeyGen AIアバターテンプレート</p>
-              <p className="text-sm text-zinc-500 mt-1">
-                AIアバターが商品を紹介する動画テンプレートを準備中
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
 
       {/* プレビューダイアログ */}

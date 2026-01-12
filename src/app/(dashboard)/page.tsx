@@ -186,19 +186,62 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : recentVideos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Video className="h-12 w-12 text-zinc-700 mb-4" />
-                <p className="text-zinc-400">まだ動画がありません</p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  商品を追加して動画を生成しましょう
-                </p>
-                <Button
-                  className="mt-4 bg-pink-500 hover:bg-pink-600"
-                  onClick={() => router.push('/videos')}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  最初の動画を作成
-                </Button>
+              <div className="py-6 space-y-4">
+                <div className="text-center mb-4">
+                  <Video className="h-10 w-10 text-zinc-600 mx-auto mb-2" />
+                  <p className="text-zinc-400 font-medium">動画を作成しましょう</p>
+                  <p className="text-xs text-zinc-500">以下のステップで進めてください</p>
+                </div>
+
+                {/* ステップ1: 商品登録 */}
+                <div className={`p-4 rounded-lg border ${topProducts.length === 0 ? 'bg-pink-500/10 border-pink-500/30' : 'bg-zinc-800/30 border-zinc-700'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${topProducts.length === 0 ? 'bg-pink-500 text-white' : 'bg-green-500 text-white'}`}>
+                      {topProducts.length === 0 ? '1' : <CheckCircle className="h-4 w-4" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${topProducts.length === 0 ? 'text-white' : 'text-zinc-400'}`}>
+                        商品を登録する
+                      </p>
+                      <p className="text-xs text-zinc-500">URLから自動入力、または手動で登録</p>
+                    </div>
+                  </div>
+                  {topProducts.length === 0 && (
+                    <Button
+                      className="mt-3 w-full bg-pink-500 hover:bg-pink-600"
+                      onClick={() => router.push('/products')}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      商品を登録する
+                    </Button>
+                  )}
+                </div>
+
+                {/* ステップ2: 動画生成 */}
+                <div className={`p-4 rounded-lg border ${topProducts.length > 0 ? 'bg-pink-500/10 border-pink-500/30' : 'bg-zinc-800/30 border-zinc-700 opacity-60'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${topProducts.length > 0 ? 'bg-pink-500 text-white' : 'bg-zinc-700 text-zinc-400'}`}>
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${topProducts.length > 0 ? 'text-white' : 'text-zinc-500'}`}>
+                        動画を生成する
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        {topProducts.length > 0 ? 'AIで商品紹介動画を自動生成' : '商品登録後に利用可能'}
+                      </p>
+                    </div>
+                  </div>
+                  {topProducts.length > 0 && (
+                    <Button
+                      className="mt-3 w-full bg-pink-500 hover:bg-pink-600"
+                      onClick={() => router.push('/videos')}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      動画を生成する
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -287,20 +330,38 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : topProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Package className="h-12 w-12 text-zinc-700 mb-4" />
-                <p className="text-zinc-400">まだ商品がありません</p>
-                <p className="text-sm text-zinc-500 mt-1">
-                  商品を登録してバズ動画を作成しましょう
+              <div className="py-6 space-y-4">
+                <div className="text-center mb-4">
+                  <Package className="h-10 w-10 text-zinc-600 mx-auto mb-2" />
+                  <p className="text-zinc-400 font-medium">まず商品を登録しましょう</p>
+                  <p className="text-xs text-zinc-500">TikTok Shopの商品URLを入力するだけ</p>
+                </div>
+
+                {/* 登録方法の説明 */}
+                <div className="p-4 rounded-lg bg-pink-500/10 border border-pink-500/30">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-white">商品URLを入力</p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Amazon、楽天、TikTok ShopなどのURLから商品情報を自動取得します
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    className="mt-4 w-full bg-pink-500 hover:bg-pink-600"
+                    onClick={() => router.push('/products')}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    商品を登録する
+                  </Button>
+                </div>
+
+                <p className="text-xs text-zinc-500 text-center">
+                  登録した商品から自動でバズ動画を生成できます
                 </p>
-                <Button
-                  className="mt-4"
-                  variant="outline"
-                  onClick={() => router.push('/products')}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  商品を追加
-                </Button>
               </div>
             ) : (
               <div className="space-y-3">

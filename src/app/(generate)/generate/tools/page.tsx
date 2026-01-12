@@ -82,39 +82,9 @@ const categories: ToolCategory[] = [
     ],
   },
   {
-    name: '画像生成',
-    description: 'AIで画像を自動生成',
-    tools: [
-      {
-        id: 'image-gen',
-        name: '画像生成',
-        description: 'テキストから画像を生成',
-        icon: ImageIcon,
-        href: '/generate/image',
-        status: 'coming-soon',
-      },
-      {
-        id: 'style-transfer',
-        name: 'スタイル変換',
-        description: '画像のスタイルを変換',
-        icon: Palette,
-        href: '/generate/image',
-        status: 'coming-soon',
-      },
-    ],
-  },
-  {
     name: '動画編集',
     description: 'AI支援の動画編集ツール',
     tools: [
-      {
-        id: 'canvas',
-        name: 'キャンバス',
-        description: '画像・動画を自由に編集',
-        icon: Layout,
-        href: '/generate/canvas',
-        status: 'coming-soon',
-      },
       {
         id: 'extend',
         name: '動画延長',
