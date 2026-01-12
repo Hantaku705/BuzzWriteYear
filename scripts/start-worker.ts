@@ -765,12 +765,226 @@ variantWorker.on('failed', (job, error) => {
   console.error(`[Variant] Job ${job?.id} failed:`, error.message)
 })
 
+// バッチ生成ワーカー
+interface BatchJobData {
+  batchJobId: string
+  userId: string
+  type: 'heygen' | 'kling'
+  config: Record<string, unknown>
+}
+
+interface BatchJobItem {
+  id: string
+  batch_job_id: string
+  video_id: string | null
+  status: string
+  item_index: number
+  config: {
+    title?: string
+    script?: string
+    prompt?: string
+    imageUrl?: string
+    productId?: string
+  }
+  error_message: string | null
+}
+
+async function updateBatchProgress(
+  batchJobId: string,
+  updates: {
+    completedCount?: number
+    failedCount?: number
+    status?: string
+  }
+) {
+  const updateData: Record<string, unknown> = {}
+
+  if (updates.completedCount !== undefined) {
+    updateData.completed_count = updates.completedCount
+  }
+  if (updates.failedCount !== undefined) {
+    updateData.failed_count = updates.failedCount
+  }
+  if (updates.status) {
+    updateData.status = updates.status
+    if (updates.status === 'completed' || updates.status === 'failed') {
+      updateData.completed_at = new Date().toISOString()
+    }
+  }
+
+  await supabase
+    .from('batch_jobs')
+    .update(updateData as never)
+    .eq('id', batchJobId)
+}
+
+async function updateBatchItemStatus(
+  itemId: string,
+  status: string,
+  videoId?: string,
+  errorMessage?: string
+) {
+  const updateData: Record<string, unknown> = { status }
+
+  if (videoId) {
+    updateData.video_id = videoId
+  }
+  if (errorMessage) {
+    updateData.error_message = errorMessage
+  }
+  if (status === 'completed' || status === 'failed') {
+    updateData.completed_at = new Date().toISOString()
+  }
+
+  await supabase
+    .from('batch_job_items')
+    .update(updateData as never)
+    .eq('id', itemId)
+}
+
+async function processBatchJob(job: Job<BatchJobData>) {
+  const { batchJobId, userId, type, config } = job.data
+
+  console.log(`[Batch] Processing batch job ${batchJobId} (type: ${type})`)
+
+  // バッチアイテム取得
+  const { data: items, error: itemsError } = await supabase
+    .from('batch_job_items')
+    .select('*')
+    .eq('batch_job_id', batchJobId)
+    .eq('status', 'pending')
+    .order('item_index', { ascending: true })
+
+  if (itemsError || !items) {
+    throw new Error(`Failed to fetch batch items: ${itemsError?.message}`)
+  }
+
+  const batchItems = items as BatchJobItem[]
+  console.log(`[Batch] Processing ${batchItems.length} items`)
+
+  let completedCount = 0
+  let failedCount = 0
+
+  // 各アイテムを処理
+  for (const item of batchItems) {
+    try {
+      await updateBatchItemStatus(item.id, 'processing')
+
+      // 動画レコード作成
+      const { data: video, error: videoError } = await supabase
+        .from('videos')
+        .insert({
+          user_id: userId,
+          product_id: item.config.productId || null,
+          title: item.config.title || `${type === 'heygen' ? 'HeyGen' : 'Kling'} バッチ #${item.item_index + 1}`,
+          status: 'generating',
+          generation_type: type,
+          progress: 0,
+          progress_message: 'バッチ処理待機中...',
+        } as never)
+        .select('id')
+        .single()
+
+      if (videoError || !video) {
+        throw new Error(`Failed to create video record: ${videoError?.message}`)
+      }
+
+      const videoId = (video as { id: string }).id
+
+      // ジョブをキューに追加（HeyGenまたはKling）
+      if (type === 'heygen') {
+        const heygenConfig = config as { avatarId: string; voiceId?: string; backgroundUrl?: string }
+        // HeyGenキューに追加（別途heygen-generation workerで処理される）
+        const { Queue } = await import('bullmq')
+        const heygenQueue = new Queue('heygen-generation', { connection })
+        await heygenQueue.add('generate', {
+          videoId,
+          userId,
+          avatarId: heygenConfig.avatarId,
+          script: item.config.script || '',
+          voiceId: heygenConfig.voiceId,
+          backgroundUrl: heygenConfig.backgroundUrl,
+        })
+        await heygenQueue.close()
+      } else {
+        const klingConfig = config as {
+          modelVersion: string
+          aspectRatio: string
+          quality: string
+          duration: number
+          enableAudio?: boolean
+        }
+        // Klingキューに追加（このワーカー内で処理される）
+        const { Queue } = await import('bullmq')
+        const klingQueue = new Queue('kling-generation', { connection })
+        await klingQueue.add('generate', {
+          videoId,
+          userId,
+          mode: item.config.imageUrl ? 'image-to-video' : 'text-to-video',
+          imageUrl: item.config.imageUrl,
+          prompt: item.config.prompt || '',
+          duration: klingConfig.duration,
+          modelVersion: klingConfig.modelVersion,
+          aspectRatio: klingConfig.aspectRatio,
+          quality: klingConfig.quality,
+          enableAudio: klingConfig.enableAudio,
+        })
+        await klingQueue.close()
+      }
+
+      await updateBatchItemStatus(item.id, 'completed', videoId)
+      completedCount++
+
+      console.log(`[Batch] Item ${item.item_index + 1} queued with video ${videoId}`)
+    } catch (error) {
+      console.error(`[Batch] Item ${item.item_index + 1} failed:`, error)
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      await updateBatchItemStatus(item.id, 'failed', undefined, errorMessage)
+      failedCount++
+    }
+
+    // バッチ進捗更新
+    await updateBatchProgress(batchJobId, { completedCount, failedCount })
+
+    // ジョブ進捗更新
+    const progress = Math.round(((completedCount + failedCount) / batchItems.length) * 100)
+    await job.updateProgress(progress)
+  }
+
+  // 最終ステータス更新
+  const finalStatus = failedCount === batchItems.length ? 'failed' : 'completed'
+  await updateBatchProgress(batchJobId, { status: finalStatus })
+
+  console.log(`[Batch] Batch ${batchJobId} finished: ${completedCount} queued, ${failedCount} failed`)
+
+  return { completedCount, failedCount }
+}
+
+const batchWorker = new Worker('batch-generation', processBatchJob, {
+  connection,
+  concurrency: 1, // バッチは1つずつ処理
+})
+
+batchWorker.on('ready', () => {
+  console.log('[Batch] Worker is ready')
+})
+
+batchWorker.on('completed', (job) => {
+  console.log(`[Batch] Job ${job.id} completed`)
+})
+
+batchWorker.on('failed', (job, error) => {
+  console.error(`[Batch] Job ${job?.id} failed:`, error.message)
+})
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('[Worker] Shutting down...')
   await worker.close()
   await pipelineWorker.close()
   await variantWorker.close()
+  await batchWorker.close()
   process.exit(0)
 })
 
@@ -779,5 +993,6 @@ process.on('SIGINT', async () => {
   await worker.close()
   await pipelineWorker.close()
   await variantWorker.close()
+  await batchWorker.close()
   process.exit(0)
 })

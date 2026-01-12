@@ -44,6 +44,7 @@ export const QUEUE_NAMES = {
   ANALYTICS_COLLECTION: 'analytics-collection',
   VIDEO_PIPELINE: 'video-pipeline',
   VIDEO_VARIANTS: 'video-variants',
+  BATCH_GENERATION: 'batch-generation',
 } as const
 
 // ジョブデータ型
@@ -211,6 +212,13 @@ export interface VariantJobData {
   duration: number
 }
 
+export interface BatchJobData {
+  batchJobId: string
+  userId: string
+  type: 'heygen' | 'kling'
+  config: Record<string, unknown>
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
@@ -228,6 +236,8 @@ let analyticsQueue: Queue | null = null
 let pipelineQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let variantQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let batchQueue: Queue | null = null
 
 export const getVideoGenerationQueue = () => {
   if (!videoGenerationQueue) {
@@ -307,6 +317,16 @@ export const getVariantQueue = () => {
     )
   }
   return variantQueue
+}
+
+export const getBatchQueue = () => {
+  if (!batchQueue) {
+    batchQueue = new Queue(
+      QUEUE_NAMES.BATCH_GENERATION,
+      { connection: getRedisConnection() }
+    )
+  }
+  return batchQueue
 }
 
 // ジョブ追加ヘルパー
@@ -429,6 +449,22 @@ export const addVariantJob = async (
     backoff: {
       type: 'exponential',
       delay: 15000,
+    },
+  })
+}
+
+export const addBatchJob = async (
+  data: BatchJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getBatchQueue()
+  return queue.add('batch-process', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
     },
   })
 }

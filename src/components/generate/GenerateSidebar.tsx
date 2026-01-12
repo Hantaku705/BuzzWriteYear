@@ -13,6 +13,7 @@ import {
   Menu,
   Zap,
   ArrowLeft,
+  User,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -20,9 +21,10 @@ import { Button } from '@/components/ui/button'
 const navigation = [
   { name: '探索', href: '/generate', icon: Compass },
   { name: 'アセット', href: '/generate/assets', icon: FolderOpen },
-  { name: 'Kling O1', href: '/generate', icon: Sparkles, active: true, badge: null },
+  { name: 'Kling O1', href: '/generate', icon: Sparkles, badge: null },
+  { name: 'HeyGen', href: '/generate/heygen', icon: User, badge: 'NEW' },
   { name: '画像生成', href: '/generate/image', icon: ImageIcon },
-  { name: '動画生成', href: '/generate', icon: Video, badge: 'NEW' },
+  { name: '動画生成', href: '/generate', icon: Video },
   { name: 'キャンバス', href: '/generate/canvas', icon: Layout },
   { name: 'すべてのツール', href: '/generate/tools', icon: Grid3X3 },
 ]
@@ -46,7 +48,12 @@ export function GenerateSidebar() {
       {/* Main Navigation */}
       <nav className="flex-1 flex flex-col items-center gap-1 py-4">
         {navigation.map((item) => {
-          const isActive = item.active || pathname === item.href
+          // HeyGenページの場合は完全一致、その他は/generateの場合のみKling O1をアクティブ
+          const isActive = item.href === '/generate/heygen'
+            ? pathname === '/generate/heygen'
+            : item.href === '/generate' && item.name === 'Kling O1'
+            ? pathname === '/generate'
+            : pathname === item.href
           return (
             <Link
               key={item.name}
