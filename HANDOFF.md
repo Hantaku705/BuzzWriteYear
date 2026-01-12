@@ -208,6 +208,9 @@
     - Cycle 2: 「準備中」モード削除、FFmpegプレビュー修正、Cmd+Enterショートカット、自動保存フィードバック
     - Cycle 3: プロンプト文字数カウント・色分けガイダンス、ショートカットヘルプUI
     - Cycle 4: 追加ショートカット6種（Cmd+1/2, Cmd+↑/↓, Esc）
+- [x] **Vercelビルドエラー修正・本番デプロイ復旧（セッション37）**
+  - VideoGenerateModal.tsx:1492 - `onClose` → `onOpenChange(false)` に修正
+  - 本番E2Eテスト: 14/14 Pass
 
 ### 作業中のタスク
 - なし
@@ -252,18 +255,32 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M .claude/commands/user-fb.md
 M HANDOFF.md
-M src/components/generate/GenerateInputPanel.tsx
-?? .claude/user-feedback/2026-01-12-v4-final.md
+M tests/screenshots/analytics-dashboard.png
+M tests/screenshots/kling-mode-selection.png
+M tests/screenshots/kling-product-selection.png
 ```
 
 ## 最新コミット
 ```
-8336981 docs: add VISION.md and enhance /user-fb skill with VISION alignment
+b94ded2 fix: correct onClose to onOpenChange in VideoGenerateModal
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション37）
+- **/confirm 本番E2Eテスト実行**
+  - Vercelデプロイがエラー状態であることを発見
+  - 最新コミット（03cd267）がビルドエラーで失敗
+- **ビルドエラー修正**
+  - 原因: `VideoGenerateModal.tsx:1492` で未定義の `onClose` 変数
+  - 修正: `onClose?.()` → `onOpenChange(false)` に変更
+- **デプロイ復旧**
+  - コミット: `b94ded2 fix: correct onClose to onOpenChange in VideoGenerateModal`
+  - Vercel自動デプロイ: Ready
+- **本番E2Eテスト再実行: 14/14 Pass (32.5s)**
+  - app-verification.spec.ts: 9/9 Pass
+  - kling-generation.spec.ts: 5/5 Pass
 
 ### 2026-01-12（セッション36）
 - **/user-fb PDCA 4サイクル完了・全目標達成**
