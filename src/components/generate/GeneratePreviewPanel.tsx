@@ -26,6 +26,7 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  Zap,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -166,24 +167,76 @@ export function GeneratePreviewPanel({
         {/* Generating State */}
         {isGenerating && !generatedVideoUrl && (
           <div className="flex flex-col items-center justify-center text-center max-w-md">
-            <div className="relative w-24 h-24 mb-6">
-              <div className="absolute inset-0 border-4 border-emerald-500/30 rounded-full" />
-              <div className="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            {/* Animated Progress Ring */}
+            <div className="relative w-28 h-28 mb-6">
+              <div className="absolute inset-0 border-4 border-emerald-500/20 rounded-full" />
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle
+                  cx="56"
+                  cy="56"
+                  r="52"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  className="text-emerald-500 transition-all duration-500"
+                  strokeDasharray={`${(generationProgress ?? 0) * 3.27} 327`}
+                />
+              </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <Sparkles className="h-8 w-8 text-emerald-400" />
+                {(generationProgress ?? 0) < 30 ? (
+                  <Sparkles className="h-8 w-8 text-emerald-400 animate-pulse" />
+                ) : (generationProgress ?? 0) < 70 ? (
+                  <Zap className="h-8 w-8 text-yellow-400 animate-bounce" />
+                ) : (
+                  <CheckCircle className="h-8 w-8 text-emerald-400 animate-pulse" />
+                )}
               </div>
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">AI動画を生成中...</h3>
-            <p className="text-zinc-400 text-sm mb-4">
-              高品質な動画を生成しています。1〜3分ほどお待ちください。
-            </p>
+
+            {/* Phase-based messaging */}
+            <h3 className="text-xl font-bold text-white mb-2">
+              {(generationProgress ?? 0) < 20 && 'AI分析中...'}
+              {(generationProgress ?? 0) >= 20 && (generationProgress ?? 0) < 50 && 'フレーム生成中...'}
+              {(generationProgress ?? 0) >= 50 && (generationProgress ?? 0) < 80 && '高品質エンコード中...'}
+              {(generationProgress ?? 0) >= 80 && 'もう少しで完成！'}
+            </h3>
+
+            {/* Micro-goal feedback */}
+            <div className="space-y-2 mb-4">
+              <p className="text-zinc-400 text-sm">
+                {(generationProgress ?? 0) < 20 && '素材を分析しています...'}
+                {(generationProgress ?? 0) >= 20 && (generationProgress ?? 0) < 50 && '魅力的なモーションを生成しています'}
+                {(generationProgress ?? 0) >= 50 && (generationProgress ?? 0) < 80 && '高品質な映像に仕上げています'}
+                {(generationProgress ?? 0) >= 80 && '最終チェック中です'}
+              </p>
+              {(generationProgress ?? 0) >= 30 && (generationProgress ?? 0) < 80 && (
+                <p className="text-xs text-emerald-400/80 animate-pulse">
+                  素晴らしい構図が検出されました
+                </p>
+              )}
+            </div>
+
+            {/* Progress bar with percentage */}
             {generationProgress !== undefined && (
               <div className="w-full max-w-xs">
-                <div className="flex items-center justify-between text-sm text-zinc-400 mb-2">
-                  <span>進捗</span>
-                  <span>{generationProgress}%</span>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-zinc-400">進捗</span>
+                  <span className="text-emerald-400 font-medium">{generationProgress}%</span>
                 </div>
-                <Progress value={generationProgress} className="h-2" />
+                <div className="relative">
+                  <Progress value={generationProgress} className="h-2" />
+                  {/* Shimmer effect on progress bar */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer rounded-full overflow-hidden" />
+                </div>
+                {/* Estimated time remaining */}
+                <p className="text-xs text-zinc-500 mt-2 text-center">
+                  {generationProgress < 50
+                    ? '残り約1〜2分'
+                    : generationProgress < 80
+                    ? '残り約30秒〜1分'
+                    : 'まもなく完了'}
+                </p>
               </div>
             )}
           </div>

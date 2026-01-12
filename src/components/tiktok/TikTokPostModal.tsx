@@ -98,9 +98,15 @@ export function TikTokPostModal({
 
   const handleAddHashtag = (tag: string) => {
     const normalizedTag = tag.startsWith('#') ? tag : `#${tag}`
-    if (!hashtags.includes(normalizedTag) && hashtags.length < 30) {
-      setHashtags([...hashtags, normalizedTag])
+    if (hashtags.length >= 30) {
+      toast.warning('ハッシュタグは30個までです')
+      return
     }
+    if (hashtags.includes(normalizedTag)) {
+      toast.info('このハッシュタグは既に追加されています')
+      return
+    }
+    setHashtags([...hashtags, normalizedTag])
     setHashtagInput('')
   }
 

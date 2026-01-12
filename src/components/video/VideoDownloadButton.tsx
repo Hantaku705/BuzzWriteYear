@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -30,19 +31,27 @@ export function VideoDownloadButton({
   const [copied, setCopied] = useState(false)
 
   const handleDownload = () => {
-    if (videoUrl) {
-      // video_url がある場合は直接ダウンロード
-      const link = document.createElement('a')
-      link.href = videoUrl
-      link.download = `video-${videoId}.mp4`
-      link.target = '_blank'
-      link.rel = 'noopener noreferrer'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } else if (compositionId && inputProps) {
-      // Remotion動画でvideo_urlがない場合はガイドダイアログを表示
-      setIsDialogOpen(true)
+    try {
+      if (videoUrl) {
+        // video_url がある場合は直接ダウンロード
+        const link = document.createElement('a')
+        link.href = videoUrl
+        link.download = `video-${videoId}.mp4`
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        toast.success('ダウンロードを開始しました')
+      } else if (compositionId && inputProps) {
+        // Remotion動画でvideo_urlがない場合はガイドダイアログを表示
+        setIsDialogOpen(true)
+      } else {
+        toast.error('ダウンロード可能な動画がありません')
+      }
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('ダウンロードに失敗しました。もう一度お試しください。')
     }
   }
 

@@ -200,8 +200,10 @@ export function GenerateInputPanel({
     try {
       const uploadedUrl = await uploadImage(file)
       setUrl(uploadedUrl)
+      toast.success('画像をアップロードしました')
     } catch (error) {
       console.error('Upload error:', error)
+      toast.error('画像のアップロードに失敗しました。もう一度お試しください。')
       setPreview(null)
       setUrl(null)
     } finally {
