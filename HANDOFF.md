@@ -180,6 +180,15 @@
   - バッチワーカー（HeyGen/Kling両対応）
   - CSV入力対応（ドラッグ&ドロップ）
   - DBマイグレーション（batch_jobs, batch_job_items, tiktok_posts）
+- [x] **HeyGenカスタムアバター機能実装（セッション34）**
+  - Photo Avatar作成（写真1枚から数分で生成、Business以上）
+  - Video Avatar作成（動画学習で高品質生成、Enterprise限定）
+  - カスタムアバターAPIクライアント（`custom-avatar.ts`）
+  - APIエンドポイント（`/api/videos/heygen/avatar`）
+  - トレーニングステータスAPI（`/api/videos/heygen/avatar/[id]/status`）
+  - React Queryフック（`useCustomAvatar.ts`）
+  - UIコンポーネント（`PhotoAvatarCreator`, `VideoAvatarCreator`）
+  - 専用ページ（`/generate/heygen/custom`）
 
 ### 作業中のタスク
 - なし
@@ -229,10 +238,38 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 最新コミット
 ```
-2e52d81 feat(batch): add batch video generation with TikTok/HeyGen integration
+31674fb feat(heygen): add custom avatar creation feature
 ```
 
 ## セッション履歴
+
+### 2026-01-12（セッション34）
+- **HeyGenカスタムアバター機能実装**
+  - Photo Avatar: 写真1枚からAIアバター生成（Business以上必要）
+  - Video Avatar: 動画学習で高品質アバター生成（Enterprise限定）
+- **バックエンド実装**
+  - `src/lib/video/heygen/custom-avatar.ts`: APIクライアント
+    - `createPhotoAvatar()`: 写真からアバター作成
+    - `createVideoAvatar()`: 動画学習（3ステップ: トレーニング動画→同意書動画→アバター作成）
+    - `getPhotoAvatarStatus()` / `getTrainingStatus()`: ステータス取得
+    - `listCustomAvatars()`: カスタムアバター一覧
+    - `waitForPhotoAvatarCompletion()` / `waitForVideoAvatarTraining()`: ポーリングヘルパー
+  - `src/app/api/videos/heygen/avatar/route.ts`: POST（作成）, GET（一覧）
+  - `src/app/api/videos/heygen/avatar/[id]/status/route.ts`: GET（ステータス）
+- **フロントエンド実装**
+  - `src/hooks/useCustomAvatar.ts`: React Queryフック群
+    - `useCustomAvatars()`: 一覧取得
+    - `useCreatePhotoAvatar()` / `useCreateVideoAvatar()`: 作成mutation
+    - `usePhotoAvatarStatus()` / `useVideoAvatarStatus()`: ポーリング
+  - `src/components/video/heygen/PhotoAvatarCreator.tsx`: 写真アバター作成UI
+  - `src/components/video/heygen/VideoAvatarCreator.tsx`: 動画アバター作成UI
+  - `src/app/(generate)/generate/heygen/custom/page.tsx`: 専用ページ
+- **CLAUDE.md更新**
+  - API Routes追加（heygen/avatar）
+  - Key Files追加（heygen/コンポーネント）
+  - HeyGenカスタムアバター機能セクション追加
+- **本番E2Eテスト: 9/9 Pass**
+- **ビルド成功**
 
 ### 2026-01-12（セッション33）
 - **バッチ動画生成機能（Phase 3）実装完了**
