@@ -245,6 +245,12 @@
   - JSONエクスポート/インポート
   - UI（一覧・作成・詳細ページ）
   - GenerateInputPanelへのスタイル選択統合
+- [x] **アカウント分析・スタイル学習スキル実装（セッション40）**
+  - `/analyze-account` スキル: TikTokアカウント分析→モデリングレポート生成
+  - `/learn-style` スキル: アカウントのスタイルをJSONテンプレートに学習
+  - `/generate-like` スキル: 学習済みスタイルで動画生成
+  - TikTok APIクライアント修正（scraptik→tiktok-api23）
+  - secUid対応、stats/itemList応答形式対応
 
 ### 作業中のタスク
 - なし
@@ -305,17 +311,52 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 
 ## 未コミット変更
 ```
-M HANDOFF.md
-M tests/ (スクリーンショット・テスト結果)
-+ UGCスタイル学習機能関連ファイル（未コミット）
+M src/lib/sns/tiktok-scraper.ts
++ .claude/commands/analyze-account.md
++ .claude/commands/generate-like.md
++ .claude/commands/learn-style.md
++ docs/account-analysis/reports/
++ scripts/analyze-account.ts
++ scripts/generate-like.ts
++ scripts/learn-style.ts
 ```
 
 ## 最新コミット
 ```
-352267c fix(ux): add error notifications and improve loading experience
+a885099 feat: add SNS analytics kit and UGC style learning
 ```
 
 ## セッション履歴
+
+### 2026-01-13（セッション40）
+- **アカウント分析・スタイル学習スキル実装**
+  - ユーザー要望: TikTokアカウントをモデリングして同じスタイルのUGC動画を生成したい
+  - 3つのClaude Codeスキルを作成
+- **/analyze-account スキル**
+  - `scripts/analyze-account.ts`: アカウント分析→レポート生成
+  - `.claude/commands/analyze-account.md`: スキル定義
+  - 機能: プロフィール取得、Top3動画特定、AI分析（Gemini）、Markdownレポート出力
+  - 出力先: `docs/account-analysis/reports/<username>_<date>.md`
+- **/learn-style スキル**
+  - `scripts/learn-style.ts`: スタイル学習→JSONテンプレート保存
+  - `.claude/commands/learn-style.md`: スキル定義
+  - 機能: Top5動画をダウンロード→Gemini分析→スタイル統合→JSONエクスポート
+  - 出力先: `docs/account-analysis/styles/<username>.json`
+  - 分析項目: カメラワーク、編集スタイル、視覚スタイル、モーション、オーディオ
+- **/generate-like スキル**
+  - `scripts/generate-like.ts`: スタイル適用動画生成
+  - `.claude/commands/generate-like.md`: スキル定義
+  - 機能: JSONテンプレート読み込み→Kling AI生成→FFmpeg UGC加工→テキスト追加
+  - 出力先: `output/generated/<style_id>_<timestamp>.mp4`
+- **TikTok APIクライアント修正**
+  - 問題: scraptik APIが403エラー
+  - 修正: `tiktok-api23.p.rapidapi.com` に変更
+  - 修正: stats応答形式対応（`data.userInfo.stats`）
+  - 修正: itemList応答形式対応（`data.data.itemList`）
+  - 修正: secUid追加（TikTokUser型）
+- **テスト実行**
+  - `@luana.beauty.2nd` でアカウント分析実行成功
+  - 14動画取得、22.6Kフォロワー、671.6K総いいね
 
 ### 2026-01-13（セッション39 - 続き）
 - **UGCスタイル学習機能 完全実装**

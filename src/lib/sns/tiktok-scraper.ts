@@ -12,6 +12,7 @@ const RAPIDAPI_KEY = process.env.TIKTOK_RAPIDAPI_KEY || process.env.RAPIDAPI_KEY
  */
 export interface TikTokUser {
   id: string
+  secUid: string         // セキュアユーザーID（API呼び出しに必要）
   uniqueId: string       // ユーザー名（@なし）
   nickname: string       // 表示名
   avatarUrl: string
@@ -68,11 +69,12 @@ function getHeaders(host: string): HeadersInit {
 export async function getTikTokUser(username: string): Promise<TikTokUser> {
   const cleanUsername = username.replace('@', '')
 
+  // tiktok-api23 を使用
   const response = await fetch(
-    `https://scraptik.p.rapidapi.com/get-user?username=${encodeURIComponent(cleanUsername)}`,
+    `https://tiktok-api23.p.rapidapi.com/api/user/info?uniqueId=${encodeURIComponent(cleanUsername)}`,
     {
       method: 'GET',
-      headers: getHeaders('scraptik.p.rapidapi.com'),
+      headers: getHeaders('tiktok-api23.p.rapidapi.com'),
     }
   )
 
@@ -82,6 +84,8 @@ export async function getTikTokUser(username: string): Promise<TikTokUser> {
 
   const data = await response.json()
   const user = data.userInfo?.user || data.user
+  // tiktok-api23はstatsが別フィールドで返る
+  const stats = data.userInfo?.stats || {}
 
   if (!user) {
     throw new Error('User not found')
@@ -89,13 +93,14 @@ export async function getTikTokUser(username: string): Promise<TikTokUser> {
 
   return {
     id: user.id,
+    secUid: user.secUid || '',
     uniqueId: user.uniqueId,
     nickname: user.nickname,
     avatarUrl: user.avatarLarger || user.avatarMedium,
-    followerCount: user.followerCount || 0,
-    followingCount: user.followingCount || 0,
-    heartCount: user.heartCount || user.heart || 0,
-    videoCount: user.videoCount || 0,
+    followerCount: stats.followerCount || user.followerCount || 0,
+    followingCount: stats.followingCount || user.followingCount || 0,
+    heartCount: stats.heartCount || stats.heart || user.heartCount || user.heart || 0,
+    videoCount: stats.videoCount || user.videoCount || 0,
     bio: user.signature || '',
     verified: user.verified || false,
   }
@@ -108,11 +113,12 @@ export async function getTikTokUserVideos(
   userId: string,
   count: number = 30
 ): Promise<TikTokVideo[]> {
+  // tiktok-api23 を使用（secUidが必要な場合あり）
   const response = await fetch(
-    `https://scraptik.p.rapidapi.com/user-posts?user_id=${userId}&count=${count}`,
+    `https://tiktok-api23.p.rapidapi.com/api/user/posts?secUid=${encodeURIComponent(userId)}&count=${count}`,
     {
       method: 'GET',
-      headers: getHeaders('scraptik.p.rapidapi.com'),
+      headers: getHeaders('tiktok-api23.p.rapidapi.com'),
     }
   )
 
@@ -121,7 +127,8 @@ export async function getTikTokUserVideos(
   }
 
   const data = await response.json()
-  const items = data.itemList || data.aweme_list || []
+  // tiktok-api23は { data: { itemList: [...] } } 形式
+  const items = data.data?.itemList || data.itemList || data.aweme_list || []
 
   return items.map(parseVideoItem)
 }
@@ -287,7 +294,8 @@ export async function getTikTokInsight(
   }
 
   const user = await getTikTokUser(username)
-  const videos = await getTikTokUserVideos(user.id, videoCount)
+  // secUidを使用してposts取得（tiktok-api23はsecUidが必要）
+  const videos = await getTikTokUserVideos(user.secUid, videoCount)
 
   // メトリクス集計
   const aggregatedMetrics = videos.reduce(

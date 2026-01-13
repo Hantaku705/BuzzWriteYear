@@ -190,6 +190,11 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
 | `src/lib/sns/` | **SNS動画分析Kit（TikTok/Instagram/YouTube対応）** |
 | `scripts/analyze-video.ts` | Gemini 2.0 Video API動画分析スクリプト |
+| `scripts/analyze-account.ts` | **TikTokアカウント分析→モデリングレポート** |
+| `scripts/learn-style.ts` | **UGCスタイル学習→JSONテンプレート** |
+| `scripts/generate-like.ts` | **学習済みスタイルで動画生成** |
+| `docs/account-analysis/reports/` | **アカウント分析レポート保存先** |
+| `docs/account-analysis/styles/` | **スタイルテンプレートJSON保存先** |
 | `src/remotion/` | Remotionテンプレート |
 | `src/workers/` | バックグラウンドワーカー |
 | `src/types/database.ts` | DB型定義 |
@@ -404,6 +409,9 @@ const response = await fetch('/api/sns/analyze', {
 | `/deploy-verify` | Vercel+Render統合デプロイ検証 |
 | `/test-and-fix` | テスト実行・失敗分析・自動修正 |
 | `/confirm` | 本番環境E2Eテスト（Playwright） |
+| `/analyze-account` | **TikTokアカウント分析→モデリングレポート生成** |
+| `/learn-style` | **アカウントのスタイルをJSONテンプレートに学習** |
+| `/generate-like` | **学習済みスタイルで動画生成** |
 | `/handoff` | セッション終了時の書き出し |
 | `/resume` | セッション再開時の読み込み |
 | `/quick-commit` | 高速コミット |
