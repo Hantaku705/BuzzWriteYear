@@ -14,6 +14,7 @@ import {
   Zap,
   ArrowLeft,
   User,
+  Wand2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'アセット', href: '/generate/assets', icon: FolderOpen },
   { name: 'Kling O1', href: '/generate', icon: Sparkles, badge: null },
   { name: 'HeyGen', href: '/generate/heygen', icon: User, badge: 'NEW' },
+  { name: 'UGCスタイル', href: '/generate/ugc-styles', icon: Wand2, badge: 'NEW' },
   { name: '画像生成', href: '/generate/image', icon: ImageIcon },
   { name: '動画生成', href: '/generate', icon: Video },
   { name: 'キャンバス', href: '/generate/canvas', icon: Layout },
@@ -48,9 +50,11 @@ export function GenerateSidebar() {
       {/* Main Navigation */}
       <nav className="flex-1 flex flex-col items-center gap-1 py-4">
         {navigation.map((item) => {
-          // HeyGenページの場合は完全一致、その他は/generateの場合のみKling O1をアクティブ
+          // 特定のパスは前方一致、それ以外は完全一致
           const isActive = item.href === '/generate/heygen'
-            ? pathname === '/generate/heygen'
+            ? pathname === '/generate/heygen' || pathname.startsWith('/generate/heygen/')
+            : item.href === '/generate/ugc-styles'
+            ? pathname.startsWith('/generate/ugc-styles')
             : item.href === '/generate' && item.name === 'Kling O1'
             ? pathname === '/generate'
             : pathname === item.href

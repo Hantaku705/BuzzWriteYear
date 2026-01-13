@@ -33,6 +33,10 @@ interface GenerateInputState {
   lastPrompt: string
   setLastPrompt: (prompt: string) => void
 
+  // UGCスタイルID
+  selectedUGCStyleId: string | null
+  setSelectedUGCStyleId: (id: string | null) => void
+
   // リセット
   reset: () => void
 }
@@ -45,6 +49,7 @@ const defaultState = {
   aspect: '9:16' as KlingAspectRatio,
   enableAudioSync: true,
   lastPrompt: '',
+  selectedUGCStyleId: null as string | null,
 }
 
 export const useGenerateInputStore = create<GenerateInputState>()(
@@ -59,6 +64,7 @@ export const useGenerateInputStore = create<GenerateInputState>()(
       setAspect: (aspect) => set({ aspect }),
       setEnableAudioSync: (enable) => set({ enableAudioSync: enable }),
       setLastPrompt: (prompt) => set({ lastPrompt: prompt }),
+      setSelectedUGCStyleId: (id) => set({ selectedUGCStyleId: id }),
 
       reset: () => set(defaultState),
     }),
@@ -73,6 +79,7 @@ export const useGenerateInputStore = create<GenerateInputState>()(
         aspect: state.aspect,
         enableAudioSync: state.enableAudioSync,
         lastPrompt: state.lastPrompt,
+        selectedUGCStyleId: state.selectedUGCStyleId,
       }),
     }
   )

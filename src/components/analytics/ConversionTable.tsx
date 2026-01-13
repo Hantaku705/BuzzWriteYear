@@ -7,8 +7,8 @@ import {
   Minus,
   Eye,
   Heart,
-  ShoppingCart,
-  DollarSign,
+  MessageCircle,
+  Share2,
   ChevronUp,
   ChevronDown,
 } from 'lucide-react'
@@ -22,10 +22,7 @@ interface VideoPerformance {
   likes: number
   comments: number
   shares: number
-  clicks: number
-  orders: number
-  gmv: number
-  conversionRate: number
+  engagementRate: number
   trend: 'up' | 'down' | 'stable'
 }
 
@@ -49,7 +46,7 @@ const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
 
 export function ConversionTable({
   data,
-  sortBy = 'gmv',
+  sortBy = 'views',
   sortOrder = 'desc',
   onSort,
 }: ConversionTableProps) {
@@ -65,7 +62,6 @@ export function ConversionTable({
   }, [data, sortBy, sortOrder])
 
   const formatNumber = (num: number) => num.toLocaleString()
-  const formatCurrency = (num: number) => `¥${num.toLocaleString()}`
   const formatPercent = (num: number) => `${(num * 100).toFixed(2)}%`
 
   // Sort indicator component
@@ -104,7 +100,7 @@ export function ConversionTable({
             >
               <div className="flex items-center justify-end gap-1">
                 <Eye className="h-3 w-3" />
-                視聴
+                再生数
                 <SortIndicator field="views" />
               </div>
             </th>
@@ -119,41 +115,32 @@ export function ConversionTable({
               </div>
             </th>
             <th
-              className={getHeaderClass('clicks')}
-              onClick={() => onSort?.('clicks')}
+              className={getHeaderClass('comments')}
+              onClick={() => onSort?.('comments')}
             >
               <div className="flex items-center justify-end gap-1">
-                <ShoppingCart className="h-3 w-3" />
-                クリック
-                <SortIndicator field="clicks" />
+                <MessageCircle className="h-3 w-3" />
+                コメント
+                <SortIndicator field="comments" />
               </div>
             </th>
             <th
-              className={getHeaderClass('orders')}
-              onClick={() => onSort?.('orders')}
+              className={getHeaderClass('shares')}
+              onClick={() => onSort?.('shares')}
             >
               <div className="flex items-center justify-end gap-1">
-                注文
-                <SortIndicator field="orders" />
+                <Share2 className="h-3 w-3" />
+                シェア
+                <SortIndicator field="shares" />
               </div>
             </th>
             <th
-              className={getHeaderClass('gmv')}
-              onClick={() => onSort?.('gmv')}
+              className={getHeaderClass('engagementRate')}
+              onClick={() => onSort?.('engagementRate')}
             >
               <div className="flex items-center justify-end gap-1">
-                <DollarSign className="h-3 w-3" />
-                GMV
-                <SortIndicator field="gmv" />
-              </div>
-            </th>
-            <th
-              className={getHeaderClass('conversionRate')}
-              onClick={() => onSort?.('conversionRate')}
-            >
-              <div className="flex items-center justify-end gap-1">
-                CVR
-                <SortIndicator field="conversionRate" />
+                エンゲージ率
+                <SortIndicator field="engagementRate" />
               </div>
             </th>
             <th className="text-center py-3 px-2 font-medium text-zinc-400">
@@ -178,23 +165,20 @@ export function ConversionTable({
                   {video.templateType}
                 </span>
               </td>
-              <td className="text-right py-3 px-2 text-zinc-300">
+              <td className="text-right py-3 px-2 font-medium text-purple-400">
                 {formatNumber(video.views)}
               </td>
-              <td className="text-right py-3 px-2 text-zinc-300">
+              <td className="text-right py-3 px-2 text-pink-400">
                 {formatNumber(video.likes)}
               </td>
               <td className="text-right py-3 px-2 text-zinc-300">
-                {formatNumber(video.clicks)}
+                {formatNumber(video.comments)}
+              </td>
+              <td className="text-right py-3 px-2 text-green-400">
+                {formatNumber(video.shares)}
               </td>
               <td className="text-right py-3 px-2 text-zinc-300">
-                {formatNumber(video.orders)}
-              </td>
-              <td className="text-right py-3 px-2 font-medium text-green-400">
-                {formatCurrency(video.gmv)}
-              </td>
-              <td className="text-right py-3 px-2 text-zinc-300">
-                {formatPercent(video.conversionRate)}
+                {formatPercent(video.engagementRate)}
               </td>
               <td className="text-center py-3 px-2">
                 <TrendIcon trend={video.trend} />
@@ -215,54 +199,26 @@ export function ConversionTable({
 
 // サマリーカード
 export function PerformanceSummary({
-  totalGmv,
-  totalOrders,
   totalViews,
-  avgConversionRate,
-  gmvChange,
+  totalLikes,
+  totalComments,
+  totalShares,
+  avgEngagementRate,
 }: {
-  totalGmv: number
-  totalOrders: number
   totalViews: number
-  avgConversionRate: number
-  gmvChange?: number
+  totalLikes: number
+  totalComments: number
+  totalShares: number
+  avgEngagementRate: number
 }) {
+  const totalEngagement = totalLikes + totalComments + totalShares
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div className="bg-zinc-800 rounded-lg p-4">
         <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
-          <DollarSign className="h-4 w-4" />
-          総GMV
-        </div>
-        <div className="text-2xl font-bold text-green-400">
-          ¥{totalGmv.toLocaleString()}
-        </div>
-        {gmvChange !== undefined && (
-          <div
-            className={`text-xs mt-1 ${
-              gmvChange >= 0 ? 'text-green-500' : 'text-red-500'
-            }`}
-          >
-            {gmvChange >= 0 ? '+' : ''}
-            {(gmvChange * 100).toFixed(1)}% vs 前週
-          </div>
-        )}
-      </div>
-
-      <div className="bg-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
-          <ShoppingCart className="h-4 w-4" />
-          総注文数
-        </div>
-        <div className="text-2xl font-bold text-blue-400">
-          {totalOrders.toLocaleString()}
-        </div>
-      </div>
-
-      <div className="bg-zinc-800 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
           <Eye className="h-4 w-4" />
-          総視聴数
+          総再生数
         </div>
         <div className="text-2xl font-bold text-purple-400">
           {totalViews.toLocaleString()}
@@ -271,11 +227,31 @@ export function PerformanceSummary({
 
       <div className="bg-zinc-800 rounded-lg p-4">
         <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+          <Heart className="h-4 w-4" />
+          総いいね
+        </div>
+        <div className="text-2xl font-bold text-pink-400">
+          {totalLikes.toLocaleString()}
+        </div>
+      </div>
+
+      <div className="bg-zinc-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
+          <Share2 className="h-4 w-4" />
+          総エンゲージメント
+        </div>
+        <div className="text-2xl font-bold text-green-400">
+          {totalEngagement.toLocaleString()}
+        </div>
+      </div>
+
+      <div className="bg-zinc-800 rounded-lg p-4">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-1">
           <TrendingUp className="h-4 w-4" />
-          平均CVR
+          エンゲージメント率
         </div>
         <div className="text-2xl font-bold text-orange-400">
-          {(avgConversionRate * 100).toFixed(2)}%
+          {(avgEngagementRate * 100).toFixed(2)}%
         </div>
       </div>
     </div>

@@ -211,9 +211,56 @@
 - [x] **Vercelビルドエラー修正・本番デプロイ復旧（セッション37）**
   - VideoGenerateModal.tsx:1492 - `onClose` → `onOpenChange(false)` に修正
   - 本番E2Eテスト: 14/14 Pass
+- [x] **/reco 10 subagent並列分析実行（セッション38）**
+  - engagement-analyzer: 中毒性スコア MEDIUM (45%)
+  - ux-analyzer: 問題18件（CRITICAL 2 / HIGH 6）
+  - security-checker: 7件（GET認証欠落 - 軽微）
+  - performance-profiler: N+1なし
+  - feature-completeness: TODO 3件
+- [x] **UX CRITICAL修正（セッション38）**
+  - TikTokPostModal: ハッシュタグ30個制限のtoast通知追加
+  - GenerateInputPanel: 画像アップロード成功/失敗のtoast通知追加
+  - VideoDownloadButton: ダウンロード成功/失敗のtoast通知追加
+- [x] **中毒性向上: ローディング体験改善（セッション38）**
+  - GeneratePreviewPanel: フェーズ別メッセージ表示（AI分析中→フレーム生成中→エンコード中→完成間近）
+  - SVG進捗リング（パーセンテージ連動アニメーション）
+  - マイクロゴール報酬（「素晴らしい構図が検出されました」）
+  - 残り時間表示（約1〜2分→約30秒〜1分→まもなく完了）
+- [x] **分析ページをGMV中心から再生数中心にリファクタリング（セッション39）**
+  - サマリーカード: 総GMV → 総再生数、コンバージョン率 → エンゲージメント率
+  - チャート: GMV/注文/クリック → 再生数/いいね/シェア
+  - テーブル: GMV列削除、コメント/シェア/エンゲージメント率追加
+  - 勝ちテンプレートスコア: GMV重み → 再生数40%+エンゲージメント率30%+シェア20%
+- [x] **SNS動画分析Kit実装（セッション39）**
+  - TikTok RapidAPIスクレイパー（ScrapTik）
+  - Instagram RapidAPIスクレイパー（Instagram Scraper API2）
+  - YouTube RSSクライアント（APIキー不要）
+  - Gemini 2.0 Flash動画AI分析
+  - プラットフォーム検出・エンゲージメント計算ユーティリティ
+  - 統合分析APIエンドポイント（/api/sns/analyze）
+- [x] **UGCスタイル学習機能実装（セッション39）**
+  - 5本以上のUGC動画からスタイル特性を学習
+  - Gemini 2.0 Flash並列分析
+  - スタイル統合・プロファイル生成
+  - JSONエクスポート/インポート
+  - UI（一覧・作成・詳細ページ）
+  - GenerateInputPanelへのスタイル選択統合
 
 ### 作業中のタスク
 - なし
+
+### 環境セットアップ状況
+  - サマリーカード: 総GMV → 総再生数、コンバージョン率 → エンゲージメント率
+  - チャート: GMV/注文/クリック → 再生数/いいね/シェア
+  - テーブル: GMV列削除、コメント/シェア/エンゲージメント率追加
+  - 勝ちテンプレートスコア: GMV重み → 再生数40%+エンゲージメント率30%+シェア20%
+- [x] **SNS動画分析Kit実装（セッション39）**
+  - TikTok RapidAPIスクレイパー（ScrapTik）
+  - Instagram RapidAPIスクレイパー（Instagram Scraper API2）
+  - YouTube RSSクライアント（APIキー不要）
+  - Gemini 2.0 Flash動画AI分析
+  - プラットフォーム検出・エンゲージメント計算ユーティリティ
+  - 統合分析APIエンドポイント（/api/sns/analyze）
 
 ### 環境セットアップ状況
 - [x] `.env.local` 作成完了（Supabase, Gemini, RapidAPI, Apify, n8n, Google Cloud）
@@ -225,6 +272,7 @@
 - [x] **Upstash Redis設定（REDIS_URL）**
 - [x] **DBマイグレーション実行完了（progress, progress_messageカラム）**
 - [x] **Render本番ワーカーデプロイ完了（kling-worker）**
+- [x] **UGCスタイル用DBマイグレーション（ugc_styles, ugc_style_samples）**
 
 ## 次のアクション
 
@@ -242,6 +290,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 - **Kling AI**: `KLING_API_KEY` でAI動画生成機能が有効に（PiAPI経由、$0.16〜/動画）
 - **TikTok API**: `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET` で投稿機能が有効に
 - **HeyGen API**: `HEYGEN_API_KEY` でAIアバター機能が有効に
+- **UGCスタイル学習**: `GEMINI_API_KEY` でスタイル分析機能が有効に
 
 ### アクセスURL
 - **本番**: https://buzzwriteyear.vercel.app
@@ -249,6 +298,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 - http://localhost:3000/analytics - 分析ダッシュボード
 - http://localhost:3000/products - 商品管理
 - http://localhost:3000/videos - 動画管理
+- http://localhost:3000/generate/ugc-styles - UGCスタイル管理
 
 ## 未解決の問題
 - なし
@@ -256,17 +306,102 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 ## 未コミット変更
 ```
 M HANDOFF.md
-M tests/screenshots/analytics-dashboard.png
-M tests/screenshots/kling-mode-selection.png
-M tests/screenshots/kling-product-selection.png
+M tests/ (スクリーンショット・テスト結果)
++ UGCスタイル学習機能関連ファイル（未コミット）
 ```
 
 ## 最新コミット
 ```
-b94ded2 fix: correct onClose to onOpenChange in VideoGenerateModal
+352267c fix(ux): add error notifications and improve loading experience
 ```
 
 ## セッション履歴
+
+### 2026-01-13（セッション39 - 続き）
+- **UGCスタイル学習機能 完全実装**
+  - 5本以上のUGC動画からスタイル特性を学習し、同じ雰囲気の動画を生成する機能
+  - Gemini 2.0 Flashで各動画を並列分析（カメラワーク、編集、色調、モーション、オーディオ）
+  - 共通パターンを統合して統一スタイルプロファイルを生成
+- **バックエンド実装**
+  - DBマイグレーション: ugc_styles, ugc_style_samples テーブル
+  - 型定義: `src/types/ugc-style.ts`（StyleProfile, GenerationParams等）
+  - Gemini分析: `src/lib/ugc-style/analyzer.ts`
+  - スタイル統合: `src/lib/ugc-style/synthesizer.ts`
+  - ワーカー: `src/workers/ugc-style-analysis.worker.ts`
+  - React Queryフック: `src/hooks/useUGCStyles.ts`
+- **APIエンドポイント**
+  - `/api/ugc-styles` - 一覧・作成
+  - `/api/ugc-styles/[id]` - 詳細・更新・削除
+  - `/api/ugc-styles/[id]/export` - JSONエクスポート
+  - `/api/ugc-styles/import` - JSONインポート
+- **UIコンポーネント**
+  - `UGCStyleCard.tsx` - スタイルカード（一覧表示）
+  - `UGCStyleUploader.tsx` - ドラッグ&ドロップ動画アップロード
+  - `UGCStyleProgress.tsx` - 分析進捗表示
+  - `UGCStyleProfile.tsx` - スタイルプロファイル詳細表示
+- **ページ**
+  - `/generate/ugc-styles` - スタイル一覧（検索・インポート・削除）
+  - `/generate/ugc-styles/new` - スタイル作成（5本以上の動画をアップロード）
+  - `/generate/ugc-styles/[id]` - スタイル詳細（分析進捗・プロファイル表示）
+- **GenerateInputPanel統合**
+  - UGCスタイル選択ドロップダウン追加
+  - 選択時にklingPromptSuffixをプロンプトに追加
+  - generateInputStoreにselectedUGCStyleId追加
+- **型エラー修正**
+  - snake_case vs camelCase変換（sample_count, thumbnail_url等）
+  - StyleProfile型のenum値不整合（steady→tripod, neutral→natural等）
+  - SNSスクレイパー（tiktok-scraper.ts, instagram-scraper.ts）の型エラー
+- **パッケージ追加**: date-fns, react-dropzone, @google/generative-ai
+- **ビルド成功・全ルート確認**
+
+### 2026-01-13（セッション39）
+- **分析ページをGMV中心から再生数（Views）中心にリファクタリング**
+  - TikTok APIの制限確認: views/likes/comments/sharesのみ取得可能、GMV/orders/clicksは不可
+  - ユーザー確認: TikTok Shop連動は不要、再生数最適化に変更
+  - 変更ファイル:
+    - `src/app/(dashboard)/analytics/page.tsx`: サマリーカード・チャート・テーブル変更
+    - `src/components/analytics/GMVChart.tsx`: メトリクス変更（views/likes/shares）
+    - `src/components/analytics/ConversionTable.tsx`: 列変更・ソート変更
+    - `src/components/analytics/WinningTemplates.tsx`: スコア計算式変更
+    - `src/lib/api/analytics.ts`: 型定義・データ取得関数変更
+- **SNS動画分析Kit実装（BuzzTeacherプロジェクトから移植）**
+  - 参照: `~/.claude/plans/tranquil-questing-sketch.md`
+  - 新規作成ファイル:
+    - `src/lib/sns/platform.ts`: プラットフォーム検出（TikTok/Instagram/YouTube/X/Threads）
+    - `src/lib/sns/metrics.ts`: エンゲージメント計算（LVR/CVR/SVR/SaveRate/TotalER）
+    - `src/lib/sns/tiktok-scraper.ts`: TikTok RapidAPIクライアント（ScrapTik）
+    - `src/lib/sns/instagram-scraper.ts`: Instagram RapidAPIクライアント（Instagram Scraper API2）
+    - `src/lib/sns/youtube-rss.ts`: YouTube RSSクライアント（APIキー不要）
+    - `src/lib/sns/gemini.ts`: Gemini 2.0 Flash動画AI分析
+    - `src/lib/sns/index.ts`: 統合エントリポイント
+    - `src/app/api/sns/analyze/route.ts`: 分析APIエンドポイント
+  - `.env.example`: SNS Kit環境変数追加（GEMINI_API_KEY, RAPIDAPI_KEY等）
+- **ビルドエラー修正（既存コード）**
+  - `src/components/ugc-style/UGCStyleProfile.tsx`: 型の不一致を修正
+  - `src/app/api/ugc-styles/[id]/route.ts`: spread演算子の型エラー修正
+
+### 2026-01-12（セッション38）
+- **/reco 10 subagent並列分析実行**
+  - code-analyzer: 3変更（スクリーンショットのみ）
+  - build-checker: success
+  - state-analyzer: ミッション確認、作業中なし
+  - test-runner: fail（サーバー未起動）
+  - tools-analyzer: 提案2件（/variant-manager, /deploy-checklist）
+  - **engagement-analyzer: 中毒性スコア MEDIUM (45%)**
+  - **ux-analyzer: 問題18件（CRITICAL 2 / HIGH 6 / MEDIUM 8 / LOW 2）**
+  - security-checker: 7件（GET認証欠落 - 軽微）
+  - performance-profiler: N+1なし、最適化対象1件
+  - feature-completeness: TODO 3件、プレースホルダー6件
+- **UX CRITICAL修正**
+  - TikTokPostModal:99-110: ハッシュタグ30個制限到達時のtoast.warning追加
+  - GenerateInputPanel:200-209: 画像アップロード成功/失敗のtoast追加
+  - VideoDownloadButton:32-51: ダウンロード成功/失敗のtoast追加
+- **中毒性向上: ローディング体験改善**
+  - GeneratePreviewPanel:167-224: フェーズ別メッセージ・SVG進捗リング・マイクロゴール・残り時間表示
+  - アイコン変化（Sparkles→Zap→CheckCircle）で進捗を視覚化
+  - 中毒性スコア: 45%→推定65%に向上
+- **コミット**: `352267c fix(ux): add error notifications and improve loading experience`
+- **ビルド成功確認**
 
 ### 2026-01-12（セッション37）
 - **/confirm 本番E2Eテスト実行**

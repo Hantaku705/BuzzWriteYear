@@ -25,7 +25,9 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { useGenerateInputStore } from '@/store/generateInputStore'
+import { useUGCStyles } from '@/hooks/useUGCStyles'
 import type { KlingModelVersion, KlingAspectRatio, KlingQuality } from '@/types/database'
+import type { GenerationParams } from '@/types/ugc-style'
 
 type ModeType = 'text-to-video' | 'image-to-video' | 'motion-control' | 'elements'
 
@@ -100,8 +102,15 @@ export function GenerateInputPanel({
   const [endFrame, setEndFrame] = useState<string | null>(null)
   const [endFrameUrl, setEndFrameUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(store.selectedUGCStyleId)
+  const [showStyleDropdown, setShowStyleDropdown] = useState(false)
   const startFrameRef = useRef<HTMLInputElement>(null)
   const endFrameRef = useRef<HTMLInputElement>(null)
+
+  // Fetch UGC styles
+  const { data: ugcStyles } = useUGCStyles()
+  const readyStyles = ugcStyles?.filter((s) => s.status === 'ready') || []
+  const selectedStyle = readyStyles.find((s) => s.id === selectedStyleId)
 
   // 初期化完了フラグ
   const isInitialized = useRef(false)
@@ -146,6 +155,10 @@ export function GenerateInputPanel({
     store.setEnableAudioSync(enableAudioSync)
     showSaveFeedback()
   }, [enableAudioSync])
+  useEffect(() => {
+    store.setSelectedUGCStyleId(selectedStyleId)
+    showSaveFeedback()
+  }, [selectedStyleId])
 
   // 初期化完了を少し遅延させる（初回の自動保存メッセージを防ぐ）
   useEffect(() => {
@@ -214,6 +227,15 @@ export function GenerateInputPanel({
   }, [uploadImage])
 
   const handleGenerate = useCallback(() => {
+    // Get style prompt suffix if a style is selected
+    let finalPrompt = prompt
+    if (selectedStyle && selectedStyle.generation_params) {
+      const genParams = selectedStyle.generation_params as GenerationParams
+      if (genParams.klingPromptSuffix) {
+        finalPrompt = prompt ? `${prompt}, ${genParams.klingPromptSuffix}` : genParams.klingPromptSuffix
+      }
+    }
+
     if (activeMode === 'image-to-video') {
       if (!startFrameUrl) {
         return
@@ -222,7 +244,7 @@ export function GenerateInputPanel({
         mode: 'image-to-video',
         imageUrl: startFrameUrl,
         imageTailUrl: endFrameUrl || undefined,
-        prompt: prompt || 'AI generated video',
+        prompt: finalPrompt || 'AI generated video',
         modelVersion: model,
         aspectRatio: aspect,
         quality,
@@ -230,12 +252,12 @@ export function GenerateInputPanel({
         enableAudio: model === '2.6' ? enableAudioSync : undefined,
       })
     } else if (activeMode === 'text-to-video') {
-      if (!prompt) {
+      if (!prompt && !selectedStyle) {
         return
       }
       onGenerate({
         mode: 'text-to-video',
-        prompt,
+        prompt: finalPrompt || 'AI generated video',
         modelVersion: model,
         aspectRatio: aspect,
         quality,
@@ -243,12 +265,13 @@ export function GenerateInputPanel({
         enableAudio: model === '2.6' ? enableAudioSync : undefined,
       })
     }
-  }, [activeMode, startFrameUrl, endFrameUrl, prompt, model, aspect, quality, duration, enableAudioSync, onGenerate])
+  }, [activeMode, startFrameUrl, endFrameUrl, prompt, model, aspect, quality, duration, enableAudioSync, selectedStyle, onGenerate])
 
   const canGenerate = () => {
     if (isGenerating || isUploading) return false
     if (activeMode === 'image-to-video') return !!startFrameUrl
-    if (activeMode === 'text-to-video') return !!prompt
+    // Allow generation with just a style selected (no prompt required if style has prompt suffix)
+    if (activeMode === 'text-to-video') return !!prompt || !!selectedStyle
     return false
   }
 
@@ -269,6 +292,7 @@ export function GenerateInputPanel({
         setShowModelDropdown(false)
         setShowQualityDropdown(false)
         setShowShortcutHelp(false)
+        setShowStyleDropdown(false)
         return
       }
 
@@ -586,6 +610,86 @@ export function GenerateInputPanel({
                 </button>
               </div>
             )}
+
+            {/* UGC Style Selection */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">UGCスタイル（任意）</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowStyleDropdown(!showStyleDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="h-4 w-4 text-emerald-400" />
+                    <span className="text-sm text-zinc-300">
+                      {selectedStyle ? selectedStyle.name : 'スタイルを選択...'}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-zinc-500" />
+                </button>
+                {showStyleDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 z-20">
+                    <button
+                      onClick={() => {
+                        setSelectedStyleId(null)
+                        setShowStyleDropdown(false)
+                      }}
+                      className={cn(
+                        'w-full flex items-center px-4 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                        !selectedStyleId ? 'bg-zinc-700/50 text-emerald-400' : 'text-zinc-400'
+                      )}
+                    >
+                      スタイルなし
+                      {!selectedStyleId && <span className="ml-auto">✓</span>}
+                    </button>
+                    {readyStyles.map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => {
+                          setSelectedStyleId(style.id)
+                          setShowStyleDropdown(false)
+                        }}
+                        className={cn(
+                          'w-full flex flex-col items-start px-4 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                          selectedStyleId === style.id ? 'bg-zinc-700/50' : ''
+                        )}
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <span className={selectedStyleId === style.id ? 'text-emerald-400' : 'text-zinc-300'}>
+                            {style.name}
+                          </span>
+                          {selectedStyleId === style.id && (
+                            <span className="ml-auto text-emerald-400">✓</span>
+                          )}
+                        </div>
+                        {style.keywords && style.keywords.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {style.keywords.slice(0, 3).map((kw) => (
+                              <span key={kw} className="text-[10px] px-1.5 py-0.5 bg-zinc-600 text-zinc-400 rounded">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {readyStyles.length === 0 && (
+                      <div className="px-4 py-3 text-center">
+                        <p className="text-sm text-zinc-500">利用可能なスタイルがありません</p>
+                        <a href="/generate/ugc-styles/new" className="text-xs text-emerald-400 hover:underline">
+                          スタイルを作成
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedStyle && (
+                <p className="text-xs text-zinc-500 mt-2">
+                  {selectedStyle.overall_vibe || '学習済みスタイルが適用されます'}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -688,6 +792,86 @@ export function GenerateInputPanel({
                 </button>
               </div>
             )}
+
+            {/* UGC Style Selection */}
+            <div>
+              <label className="block text-sm text-zinc-400 mb-2">UGCスタイル（任意）</label>
+              <div className="relative">
+                <button
+                  onClick={() => setShowStyleDropdown(!showStyleDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg hover:bg-zinc-700 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Wand2 className="h-4 w-4 text-emerald-400" />
+                    <span className="text-sm text-zinc-300">
+                      {selectedStyle ? selectedStyle.name : 'スタイルを選択...'}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-zinc-500" />
+                </button>
+                {showStyleDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-zinc-800 rounded-lg shadow-xl border border-zinc-700 z-20">
+                    <button
+                      onClick={() => {
+                        setSelectedStyleId(null)
+                        setShowStyleDropdown(false)
+                      }}
+                      className={cn(
+                        'w-full flex items-center px-4 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                        !selectedStyleId ? 'bg-zinc-700/50 text-emerald-400' : 'text-zinc-400'
+                      )}
+                    >
+                      スタイルなし
+                      {!selectedStyleId && <span className="ml-auto">✓</span>}
+                    </button>
+                    {readyStyles.map((style) => (
+                      <button
+                        key={style.id}
+                        onClick={() => {
+                          setSelectedStyleId(style.id)
+                          setShowStyleDropdown(false)
+                        }}
+                        className={cn(
+                          'w-full flex flex-col items-start px-4 py-2.5 text-sm hover:bg-zinc-700 transition-colors',
+                          selectedStyleId === style.id ? 'bg-zinc-700/50' : ''
+                        )}
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <span className={selectedStyleId === style.id ? 'text-emerald-400' : 'text-zinc-300'}>
+                            {style.name}
+                          </span>
+                          {selectedStyleId === style.id && (
+                            <span className="ml-auto text-emerald-400">✓</span>
+                          )}
+                        </div>
+                        {style.keywords && style.keywords.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {style.keywords.slice(0, 3).map((kw) => (
+                              <span key={kw} className="text-[10px] px-1.5 py-0.5 bg-zinc-600 text-zinc-400 rounded">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {readyStyles.length === 0 && (
+                      <div className="px-4 py-3 text-center">
+                        <p className="text-sm text-zinc-500">利用可能なスタイルがありません</p>
+                        <a href="/generate/ugc-styles/new" className="text-xs text-emerald-400 hover:underline">
+                          スタイルを作成
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedStyle && (
+                <p className="text-xs text-zinc-500 mt-2">
+                  {selectedStyle.overall_vibe || '学習済みスタイルが適用されます'}
+                </p>
+              )}
+            </div>
           </div>
         )}
 

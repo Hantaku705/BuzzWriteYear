@@ -1,11 +1,11 @@
 import { createClient } from '@/lib/supabase/client'
 
-export interface GMVDataPoint {
+export interface ViewsDataPoint {
   date: string
-  gmv: number
-  orders: number
   views: number
-  clicks: number
+  likes: number
+  comments: number
+  shares: number
 }
 
 export interface VideoPerformance {
@@ -17,10 +17,7 @@ export interface VideoPerformance {
   likes: number
   comments: number
   shares: number
-  clicks: number
-  orders: number
-  gmv: number
-  conversionRate: number
+  engagementRate: number
   trend: 'up' | 'down' | 'stable'
 }
 
@@ -31,19 +28,17 @@ export interface TemplatePerformance {
   contentType: string
   videoCount: number
   totalViews: number
-  totalGmv: number
-  avgConversionRate: number
+  totalLikes: number
+  totalShares: number
+  avgEngagementRate: number
   performanceScore: number
 }
 
 export interface AnalyticsSummary {
-  totalGmv: number
-  totalOrders: number
   totalViews: number
   totalLikes: number
   totalComments: number
   totalShares: number
-  avgConversionRate: number
 }
 
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
@@ -51,15 +46,12 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
 
   const { data } = await supabase
     .from('video_analytics')
-    .select('views, likes, comments, shares, clicks, orders, gmv')
+    .select('views, likes, comments, shares')
 
-  let totalGmv = 0
   let totalViews = 0
   let totalLikes = 0
   let totalComments = 0
   let totalShares = 0
-  let totalClicks = 0
-  let totalOrders = 0
 
   if (data && Array.isArray(data)) {
     for (const a of data as Array<{
@@ -67,32 +59,23 @@ export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
       likes: number
       comments: number
       shares: number
-      clicks: number
-      orders: number
-      gmv: number
     }>) {
-      totalGmv += a.gmv || 0
       totalViews += a.views || 0
       totalLikes += a.likes || 0
       totalComments += a.comments || 0
       totalShares += a.shares || 0
-      totalClicks += a.clicks || 0
-      totalOrders += a.orders || 0
     }
   }
 
   return {
-    totalGmv,
-    totalOrders,
     totalViews,
     totalLikes,
     totalComments,
     totalShares,
-    avgConversionRate: totalClicks > 0 ? totalOrders / totalClicks : 0,
   }
 }
 
-export async function getGMVData(days: number = 30): Promise<GMVDataPoint[]> {
+export async function getGMVData(days: number = 30): Promise<ViewsDataPoint[]> {
   const supabase = createClient()
 
   const startDate = new Date()
@@ -100,7 +83,7 @@ export async function getGMVData(days: number = 30): Promise<GMVDataPoint[]> {
 
   const { data } = await supabase
     .from('video_analytics')
-    .select('recorded_at, gmv, orders, views, clicks')
+    .select('recorded_at, views, likes, comments, shares')
     .gte('recorded_at', startDate.toISOString())
     .order('recorded_at', { ascending: true })
 
@@ -108,14 +91,14 @@ export async function getGMVData(days: number = 30): Promise<GMVDataPoint[]> {
 
   type AnalyticsRow = {
     recorded_at: string
-    gmv: number
-    orders: number
     views: number
-    clicks: number
+    likes: number
+    comments: number
+    shares: number
   }
 
   // Group by date
-  const grouped: Record<string, GMVDataPoint> = {}
+  const grouped: Record<string, ViewsDataPoint> = {}
 
   for (const row of data as AnalyticsRow[]) {
     const date = new Date(row.recorded_at).toLocaleDateString('ja-JP', {
@@ -124,13 +107,13 @@ export async function getGMVData(days: number = 30): Promise<GMVDataPoint[]> {
     })
 
     if (!grouped[date]) {
-      grouped[date] = { date, gmv: 0, orders: 0, views: 0, clicks: 0 }
+      grouped[date] = { date, views: 0, likes: 0, comments: 0, shares: 0 }
     }
 
-    grouped[date].gmv += row.gmv || 0
-    grouped[date].orders += row.orders || 0
     grouped[date].views += row.views || 0
-    grouped[date].clicks += row.clicks || 0
+    grouped[date].likes += row.likes || 0
+    grouped[date].comments += row.comments || 0
+    grouped[date].shares += row.shares || 0
   }
 
   return Object.values(grouped)
@@ -152,9 +135,6 @@ export async function getVideoPerformance(): Promise<VideoPerformance[]> {
     likes: number
     comments: number
     shares: number
-    clicks: number
-    orders: number
-    gmv: number
   }
 
   const { data: videos } = await supabase
@@ -176,7 +156,7 @@ export async function getVideoPerformance(): Promise<VideoPerformance[]> {
   const videoIds = (videos as VideoRow[]).map(v => v.id)
   const { data: allAnalytics } = await supabase
     .from('video_analytics')
-    .select('video_id, views, likes, comments, shares, clicks, orders, gmv, recorded_at')
+    .select('video_id, views, likes, comments, shares, recorded_at')
     .in('video_id', videoIds)
     .order('recorded_at', { ascending: false })
 
@@ -197,7 +177,9 @@ export async function getVideoPerformance(): Promise<VideoPerformance[]> {
     const analytics = analyticsMap.get(video.id)
 
     if (analytics) {
-      const conversionRate = analytics.clicks > 0 ? analytics.orders / analytics.clicks : 0
+      // エンゲージメント率 = (いいね + コメント + シェア) / 再生数
+      const totalEngagement = analytics.likes + analytics.comments + analytics.shares
+      const engagementRate = analytics.views > 0 ? totalEngagement / analytics.views : 0
 
       result.push({
         id: video.id,
@@ -208,10 +190,7 @@ export async function getVideoPerformance(): Promise<VideoPerformance[]> {
         likes: analytics.likes,
         comments: analytics.comments,
         shares: analytics.shares,
-        clicks: analytics.clicks,
-        orders: analytics.orders,
-        gmv: analytics.gmv,
-        conversionRate,
+        engagementRate,
         trend: 'stable',
       })
     }
@@ -236,9 +215,9 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
   type AnalyticsRow = {
     video_id: string
     views: number
-    clicks: number
-    orders: number
-    gmv: number
+    likes: number
+    comments: number
+    shares: number
   }
 
   const { data: templates } = await supabase
@@ -263,7 +242,7 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
   const { data: allAnalytics } = videoIds.length > 0
     ? await supabase
         .from('video_analytics')
-        .select('video_id, views, clicks, orders, gmv')
+        .select('video_id, views, likes, comments, shares')
         .in('video_id', videoIds)
     : { data: [] }
 
@@ -294,21 +273,23 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
     if (videoCount === 0) continue
 
     let totalViews = 0
-    let totalClicks = 0
-    let totalOrders = 0
-    let totalGmv = 0
+    let totalLikes = 0
+    let totalComments = 0
+    let totalShares = 0
 
     for (const videoId of videoIdsForTemplate) {
       const analyticsForVideo = videoAnalyticsMap.get(videoId) || []
       for (const a of analyticsForVideo) {
         totalViews += a.views || 0
-        totalClicks += a.clicks || 0
-        totalOrders += a.orders || 0
-        totalGmv += a.gmv || 0
+        totalLikes += a.likes || 0
+        totalComments += a.comments || 0
+        totalShares += a.shares || 0
       }
     }
 
-    const avgConversionRate = totalClicks > 0 ? totalOrders / totalClicks : 0
+    // エンゲージメント率 = (いいね + コメント + シェア) / 再生数
+    const totalEngagement = totalLikes + totalComments + totalShares
+    const avgEngagementRate = totalViews > 0 ? totalEngagement / totalViews : 0
 
     result.push({
       id: template.id,
@@ -317,11 +298,13 @@ export async function getTemplatePerformance(): Promise<TemplatePerformance[]> {
       contentType: template.content_type,
       videoCount,
       totalViews,
-      totalGmv,
-      avgConversionRate,
+      totalLikes,
+      totalShares,
+      avgEngagementRate,
       performanceScore: template.performance_score || 0,
     })
   }
 
-  return result.sort((a, b) => b.totalGmv - a.totalGmv)
+  // 再生数順でソート
+  return result.sort((a, b) => b.totalViews - a.totalViews)
 }

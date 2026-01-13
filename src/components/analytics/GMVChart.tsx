@@ -13,46 +13,46 @@ import {
   Area,
 } from 'recharts'
 
-interface GMVDataPoint {
+interface ViewsDataPoint {
   date: string
-  gmv: number
-  orders: number
   views: number
-  clicks: number
+  likes: number
+  comments: number
+  shares: number
 }
 
 interface GMVChartProps {
-  data: GMVDataPoint[]
-  metric?: 'gmv' | 'orders' | 'views' | 'clicks'
+  data: ViewsDataPoint[]
+  metric?: 'views' | 'likes' | 'shares' | 'comments'
   chartType?: 'line' | 'area'
 }
 
 const metricConfig = {
-  gmv: {
-    label: 'GMV (売上貢献額)',
-    color: '#10b981',
-    formatter: (value: number) => `¥${value.toLocaleString()}`,
-  },
-  orders: {
-    label: '注文数',
-    color: '#3b82f6',
-    formatter: (value: number) => `${value}件`,
-  },
   views: {
-    label: '視聴回数',
+    label: '再生数',
     color: '#8b5cf6',
     formatter: (value: number) => `${value.toLocaleString()}回`,
   },
-  clicks: {
-    label: '商品クリック',
-    color: '#f59e0b',
-    formatter: (value: number) => `${value.toLocaleString()}回`,
+  likes: {
+    label: 'いいね',
+    color: '#ec4899',
+    formatter: (value: number) => `${value.toLocaleString()}`,
+  },
+  comments: {
+    label: 'コメント',
+    color: '#3b82f6',
+    formatter: (value: number) => `${value.toLocaleString()}`,
+  },
+  shares: {
+    label: 'シェア',
+    color: '#10b981',
+    formatter: (value: number) => `${value.toLocaleString()}`,
   },
 }
 
 export function GMVChart({
   data,
-  metric = 'gmv',
+  metric = 'views',
   chartType = 'area',
 }: GMVChartProps) {
   const config = metricConfig[metric]
@@ -71,7 +71,7 @@ export function GMVChart({
             stroke="#9ca3af"
             tick={{ fill: '#9ca3af', fontSize: 12 }}
             tickFormatter={(value) =>
-              metric === 'gmv' ? `¥${(value / 1000).toFixed(0)}k` : value.toLocaleString()
+              value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toLocaleString()
             }
           />
           <Tooltip
@@ -116,7 +116,7 @@ export function GMVChart({
           stroke="#9ca3af"
           tick={{ fill: '#9ca3af', fontSize: 12 }}
           tickFormatter={(value) =>
-            metric === 'gmv' ? `¥${(value / 1000).toFixed(0)}k` : value.toLocaleString()
+            value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toLocaleString()
           }
         />
         <Tooltip
@@ -144,7 +144,7 @@ export function GMVChart({
 }
 
 // 複数指標を同時表示するチャート
-export function MultiMetricChart({ data }: { data: GMVDataPoint[] }) {
+export function MultiMetricChart({ data }: { data: ViewsDataPoint[] }) {
   return (
     <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data}>
@@ -158,7 +158,9 @@ export function MultiMetricChart({ data }: { data: GMVDataPoint[] }) {
           yAxisId="left"
           stroke="#9ca3af"
           tick={{ fill: '#9ca3af', fontSize: 12 }}
-          tickFormatter={(value) => `¥${(value / 1000).toFixed(0)}k`}
+          tickFormatter={(value) =>
+            value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toLocaleString()
+          }
         />
         <YAxis
           yAxisId="right"
@@ -178,25 +180,25 @@ export function MultiMetricChart({ data }: { data: GMVDataPoint[] }) {
         <Line
           yAxisId="left"
           type="monotone"
-          dataKey="gmv"
-          name="GMV"
+          dataKey="views"
+          name="再生数"
+          stroke="#8b5cf6"
+          strokeWidth={2}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="likes"
+          name="いいね"
+          stroke="#ec4899"
+          strokeWidth={2}
+        />
+        <Line
+          yAxisId="right"
+          type="monotone"
+          dataKey="shares"
+          name="シェア"
           stroke="#10b981"
-          strokeWidth={2}
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="orders"
-          name="注文数"
-          stroke="#3b82f6"
-          strokeWidth={2}
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="clicks"
-          name="クリック"
-          stroke="#f59e0b"
           strokeWidth={2}
         />
       </LineChart>

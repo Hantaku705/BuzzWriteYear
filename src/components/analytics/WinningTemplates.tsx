@@ -10,8 +10,9 @@ interface TemplatePerformance {
   contentType: string
   videoCount: number
   totalViews: number
-  totalGmv: number
-  avgConversionRate: number
+  totalLikes: number
+  totalShares: number
+  avgEngagementRate: number
   performanceScore: number
 }
 
@@ -19,29 +20,30 @@ interface WinningTemplatesProps {
   templates: TemplatePerformance[]
 }
 
-// パフォーマンススコア計算
+// パフォーマンススコア計算（再生数・エンゲージメント重視）
 export function calculatePerformanceScore(template: {
   totalViews: number
-  totalGmv: number
-  avgConversionRate: number
+  totalLikes: number
+  totalShares: number
+  avgEngagementRate: number
   videoCount: number
 }): number {
-  // スコア計算式:
-  // - GMV per video: 40%
-  // - Conversion rate: 30%
-  // - Views per video: 20%
+  // スコア計算式（再生数最適化）:
+  // - Views per video: 40%（メインKPI）
+  // - Engagement rate: 30%
+  // - Shares per video: 20%（バイラル性）
   // - Statistical significance (video count): 10%
 
-  const gmvPerVideo = template.totalGmv / Math.max(template.videoCount, 1)
   const viewsPerVideo = template.totalViews / Math.max(template.videoCount, 1)
+  const sharesPerVideo = template.totalShares / Math.max(template.videoCount, 1)
 
   // 正規化（0-100スケール）
-  const gmvScore = Math.min(gmvPerVideo / 100000 * 100, 100) * 0.4
-  const cvrScore = Math.min(template.avgConversionRate * 100 * 10, 100) * 0.3
-  const viewScore = Math.min(viewsPerVideo / 100000 * 100, 100) * 0.2
+  const viewScore = Math.min(viewsPerVideo / 100000 * 100, 100) * 0.4
+  const engagementScore = Math.min(template.avgEngagementRate * 100 * 10, 100) * 0.3
+  const shareScore = Math.min(sharesPerVideo / 1000 * 100, 100) * 0.2
   const significanceScore = Math.min(template.videoCount / 10 * 100, 100) * 0.1
 
-  return gmvScore + cvrScore + viewScore + significanceScore
+  return viewScore + engagementScore + shareScore + significanceScore
 }
 
 const RankBadge = ({ rank }: { rank: number }) => {
@@ -121,15 +123,15 @@ export function WinningTemplates({ templates }: WinningTemplatesProps) {
           </div>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <div className="text-zinc-400">GMV貢献</div>
-              <div className="font-semibold text-green-400">
-                ¥{topTemplate.totalGmv.toLocaleString()}
+              <div className="text-zinc-400">総再生数</div>
+              <div className="font-semibold text-purple-400">
+                {topTemplate.totalViews.toLocaleString()}
               </div>
             </div>
             <div>
-              <div className="text-zinc-400">CVR</div>
-              <div className="font-semibold text-blue-400">
-                {(topTemplate.avgConversionRate * 100).toFixed(2)}%
+              <div className="text-zinc-400">エンゲージ率</div>
+              <div className="font-semibold text-pink-400">
+                {(topTemplate.avgEngagementRate * 100).toFixed(2)}%
               </div>
             </div>
             <div>
@@ -167,8 +169,8 @@ export function WinningTemplates({ templates }: WinningTemplatesProps) {
               </div>
               <div className="flex items-center gap-4 mt-2 text-xs text-zinc-400">
                 <span>{template.videoCount}本</span>
-                <span>¥{template.totalGmv.toLocaleString()}</span>
-                <span>CVR {(template.avgConversionRate * 100).toFixed(2)}%</span>
+                <span>{template.totalViews.toLocaleString()}回</span>
+                <span>エンゲージ率 {(template.avgEngagementRate * 100).toFixed(2)}%</span>
               </div>
             </div>
             <div className="text-right">

@@ -45,6 +45,7 @@ export const QUEUE_NAMES = {
   VIDEO_PIPELINE: 'video-pipeline',
   VIDEO_VARIANTS: 'video-variants',
   BATCH_GENERATION: 'batch-generation',
+  UGC_STYLE_ANALYSIS: 'ugc-style-analysis',
 } as const
 
 // ジョブデータ型
@@ -219,6 +220,13 @@ export interface BatchJobData {
   config: Record<string, unknown>
 }
 
+export interface UGCStyleAnalysisJobData {
+  styleId: string
+  userId: string
+  sampleIds: string[]
+  phase: 'analyze-samples' | 'synthesize'
+}
+
 // キューインスタンス（遅延初期化）
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let videoGenerationQueue: Queue | null = null
@@ -238,6 +246,8 @@ let pipelineQueue: Queue | null = null
 let variantQueue: Queue | null = null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let batchQueue: Queue | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ugcStyleAnalysisQueue: Queue | null = null
 
 export const getVideoGenerationQueue = () => {
   if (!videoGenerationQueue) {
@@ -327,6 +337,16 @@ export const getBatchQueue = () => {
     )
   }
   return batchQueue
+}
+
+export const getUGCStyleAnalysisQueue = () => {
+  if (!ugcStyleAnalysisQueue) {
+    ugcStyleAnalysisQueue = new Queue(
+      QUEUE_NAMES.UGC_STYLE_ANALYSIS,
+      { connection: getRedisConnection() }
+    )
+  }
+  return ugcStyleAnalysisQueue
 }
 
 // ジョブ追加ヘルパー
@@ -459,6 +479,22 @@ export const addBatchJob = async (
 ) => {
   const queue = getBatchQueue()
   return queue.add('batch-process', data, {
+    delay: options?.delay,
+    priority: options?.priority,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
+    },
+  })
+}
+
+export const addUGCStyleAnalysisJob = async (
+  data: UGCStyleAnalysisJobData,
+  options?: { delay?: number; priority?: number }
+) => {
+  const queue = getUGCStyleAnalysisQueue()
+  return queue.add('analyze', data, {
     delay: options?.delay,
     priority: options?.priority,
     attempts: 3,

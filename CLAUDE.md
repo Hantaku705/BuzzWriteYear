@@ -188,6 +188,7 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `src/lib/video/heygen/` | HeyGen APIクライアント（**client.ts, custom-avatar.ts**） |
 | `src/lib/video/kling/` | Kling AI APIクライアント（PiAPI経由） |
 | `src/lib/scraper/` | 商品URLスクレイパー（Amazon/楽天/一般サイト対応） |
+| `src/lib/sns/` | **SNS動画分析Kit（TikTok/Instagram/YouTube対応）** |
 | `scripts/analyze-video.ts` | Gemini 2.0 Video API動画分析スクリプト |
 | `src/remotion/` | Remotionテンプレート |
 | `src/workers/` | バックグラウンドワーカー |
@@ -287,6 +288,58 @@ npx dotenv -e .env.local -- npx tsx scripts/start-worker.ts
 | `/api/tiktok/auth` | GET | TikTok OAuth開始 |
 | `/api/tiktok/callback` | GET | TikTok OAuthコールバック |
 | `/api/auth/logout` | POST | ログアウト |
+| `/api/sns/analyze` | POST | **SNS動画分析（TikTok/Instagram/YouTube対応）** |
+
+---
+
+## SNS動画分析Kit
+
+外部SNSのアカウント・動画を分析するライブラリ。
+
+### 機能
+
+| 機能 | 説明 |
+|------|------|
+| プラットフォーム検出 | URL/ハンドルからTikTok/Instagram/YouTube/X/Threads自動判別 |
+| エンゲージメント計算 | LVR/CVR/SVR/SaveRate/TotalER算出 |
+| TikTokスクレイピング | ユーザー情報・動画一覧取得（ScrapTik RapidAPI） |
+| Instagramスクレイピング | ユーザー情報・Reels取得（Instagram Scraper API2 RapidAPI） |
+| YouTubeフィード | チャンネル情報・最新動画取得（RSSフィード、APIキー不要） |
+| AI動画分析 | Gemini 2.0 Flashで動画内容を自動分析 |
+
+### 環境変数（オプション）
+
+```bash
+GEMINI_API_KEY=xxx          # AI動画分析に必要
+RAPIDAPI_KEY=xxx            # TikTok/Instagram取得に必要
+TIKTOK_RAPIDAPI_KEY=xxx     # TikTok専用（フォールバック: RAPIDAPI_KEY）
+INSTAGRAM_RAPIDAPI_KEY=xxx  # Instagram専用（フォールバック: RAPIDAPI_KEY）
+```
+
+### ファイル構成
+
+- `src/lib/sns/platform.ts` - プラットフォーム検出
+- `src/lib/sns/metrics.ts` - エンゲージメント計算
+- `src/lib/sns/tiktok-scraper.ts` - TikTok RapidAPIクライアント
+- `src/lib/sns/instagram-scraper.ts` - Instagram RapidAPIクライアント
+- `src/lib/sns/youtube-rss.ts` - YouTube RSSクライアント
+- `src/lib/sns/gemini.ts` - Gemini動画分析
+- `src/lib/sns/index.ts` - 統合エントリポイント
+- `src/app/api/sns/analyze/route.ts` - APIエンドポイント
+
+### API使用例
+
+```typescript
+// POST /api/sns/analyze
+const response = await fetch('/api/sns/analyze', {
+  method: 'POST',
+  body: JSON.stringify({
+    url: 'https://www.tiktok.com/@username',
+    includeAIAnalysis: true,  // オプション
+    videoCount: 30            // 取得動画数（デフォルト30）
+  })
+})
+```
 
 ---
 

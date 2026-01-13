@@ -431,5 +431,169 @@ CREATE POLICY "Service role can manage videos"
   USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- ============================================
+-- 006: UGC Style Learning
+-- ============================================
+
+-- UGCスタイルテンプレート
+CREATE TABLE IF NOT EXISTS ugc_styles (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+
+  -- ステータス: analyzing | ready | failed
+  status VARCHAR(50) NOT NULL DEFAULT 'analyzing',
+
+  -- サンプル動画数
+  sample_count INTEGER DEFAULT 0,
+
+  -- 抽出されたスタイル特性（JSON）
+  style_profile JSONB DEFAULT '{}',
+  -- {
+  --   cameraWork: { dominantStyle, shakeIntensity, zoomUsage, panUsage, commonMovements },
+  --   editStyle: { pacing, avgClipDuration, transitionTypes, hasJumpCuts, beatSync },
+  --   visualStyle: { colorTone, filterLook, contrast, saturation, dominantColors },
+  --   motionStyle: { intensity, subjectMovement, cameraMovement },
+  --   audioStyle: { hasBGM, hasVoiceover, musicGenre, sfxUsage }
+  -- }
+
+  -- 生成用パラメータ（style_profileから導出）
+  generation_params JSONB DEFAULT '{}',
+  -- {
+  --   klingPromptSuffix: string,
+  --   klingNegativePrompt: string,
+  --   motionPresetId: string,
+  --   cameraPresetId: string,
+  --   ffmpegEffects: { effects: [], intensity: string }
+  -- }
+
+  -- キーワード・全体の雰囲気
+  keywords TEXT[] DEFAULT '{}',
+  overall_vibe TEXT,
+
+  -- サムネイル（代表的なサンプルから）
+  thumbnail_url TEXT,
+
+  -- エラーメッセージ（status='failed'時）
+  error_message TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- UGCスタイルのサンプル動画
+CREATE TABLE IF NOT EXISTS ugc_style_samples (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  ugc_style_id UUID NOT NULL REFERENCES ugc_styles(id) ON DELETE CASCADE,
+
+  -- 動画情報
+  video_url TEXT NOT NULL,
+  filename VARCHAR(255),
+  duration_seconds FLOAT,
+  file_size_bytes BIGINT,
+
+  -- Gemini分析結果（JSON）
+  analysis_result JSONB DEFAULT '{}',
+  -- {
+  --   cameraWork: { movements, stability, framing },
+  --   editStyle: { pacing, avgClipDuration, transitionTypes, hasJumpCuts },
+  --   visualStyle: { dominantColors, contrast, saturation, filterLook },
+  --   motionContent: { subjectType, motionIntensity, keyActions },
+  --   audio: { hasBGM, hasVoiceover, musicGenre },
+  --   overallDescription: string
+  -- }
+
+  -- 分析ステータス: pending | analyzing | completed | failed
+  analysis_status VARCHAR(50) DEFAULT 'pending',
+
+  error_message TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- インデックス
+CREATE INDEX IF NOT EXISTS idx_ugc_styles_user_id ON ugc_styles(user_id);
+CREATE INDEX IF NOT EXISTS idx_ugc_styles_status ON ugc_styles(status);
+CREATE INDEX IF NOT EXISTS idx_ugc_style_samples_style_id ON ugc_style_samples(ugc_style_id);
+CREATE INDEX IF NOT EXISTS idx_ugc_style_samples_status ON ugc_style_samples(analysis_status);
+
+-- RLS有効化
+ALTER TABLE ugc_styles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ugc_style_samples ENABLE ROW LEVEL SECURITY;
+
+-- UGC Styles policies
+DROP POLICY IF EXISTS "Users can view own ugc_styles" ON ugc_styles;
+CREATE POLICY "Users can view own ugc_styles"
+  ON ugc_styles FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own ugc_styles" ON ugc_styles;
+CREATE POLICY "Users can insert own ugc_styles"
+  ON ugc_styles FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own ugc_styles" ON ugc_styles;
+CREATE POLICY "Users can update own ugc_styles"
+  ON ugc_styles FOR UPDATE
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own ugc_styles" ON ugc_styles;
+CREATE POLICY "Users can delete own ugc_styles"
+  ON ugc_styles FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- UGC Style Samples policies（親テーブル経由でアクセス制御）
+DROP POLICY IF EXISTS "Users can view own ugc_style_samples" ON ugc_style_samples;
+CREATE POLICY "Users can view own ugc_style_samples"
+  ON ugc_style_samples FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM ugc_styles
+      WHERE ugc_styles.id = ugc_style_samples.ugc_style_id
+      AND ugc_styles.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert own ugc_style_samples" ON ugc_style_samples;
+CREATE POLICY "Users can insert own ugc_style_samples"
+  ON ugc_style_samples FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM ugc_styles
+      WHERE ugc_styles.id = ugc_style_samples.ugc_style_id
+      AND ugc_styles.user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can delete own ugc_style_samples" ON ugc_style_samples;
+CREATE POLICY "Users can delete own ugc_style_samples"
+  ON ugc_style_samples FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM ugc_styles
+      WHERE ugc_styles.id = ugc_style_samples.ugc_style_id
+      AND ugc_styles.user_id = auth.uid()
+    )
+  );
+
+-- Service role用ポリシー（ワーカーが分析結果更新時に使用）
+DROP POLICY IF EXISTS "Service role can manage ugc_styles" ON ugc_styles;
+CREATE POLICY "Service role can manage ugc_styles"
+  ON ugc_styles FOR ALL
+  USING (auth.jwt() ->> 'role' = 'service_role');
+
+DROP POLICY IF EXISTS "Service role can manage ugc_style_samples" ON ugc_style_samples;
+CREATE POLICY "Service role can manage ugc_style_samples"
+  ON ugc_style_samples FOR ALL
+  USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Updated_at trigger
+DROP TRIGGER IF EXISTS update_ugc_styles_updated_at ON ugc_styles;
+CREATE TRIGGER update_ugc_styles_updated_at
+  BEFORE UPDATE ON ugc_styles
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
 -- マイグレーション完了
 -- ============================================

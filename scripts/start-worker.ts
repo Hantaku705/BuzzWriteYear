@@ -978,6 +978,410 @@ batchWorker.on('failed', (job, error) => {
   console.error(`[Batch] Job ${job?.id} failed:`, error.message)
 })
 
+// ============================================
+// UGCスタイル分析ワーカー
+// ============================================
+
+interface UGCStyleAnalysisJobData {
+  styleId: string
+  userId: string
+  sampleIds: string[]
+  phase: 'analyze-samples' | 'synthesize'
+}
+
+interface UGCStyleSample {
+  id: string
+  ugc_style_id: string
+  video_url: string
+  filename: string | null
+  duration_seconds: number | null
+  file_size_bytes: number | null
+  analysis_result: Record<string, unknown>
+  analysis_status: string
+  error_message: string | null
+  created_at: string
+}
+
+// Gemini API設定
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent'
+
+const SAMPLE_ANALYSIS_PROMPT = `Analyze this UGC (User Generated Content) video and extract detailed style characteristics for video generation.
+
+Return ONLY a valid JSON object with the following structure (no explanation, just JSON):
+
+{
+  "cameraWork": {
+    "movements": ["list of camera movements detected: pan_left, pan_right, zoom_in, zoom_out, tilt_up, tilt_down, shake, static, etc."],
+    "stability": "stable | handheld | shaky",
+    "framing": "closeup | medium | wide | mixed"
+  },
+  "editStyle": {
+    "pacing": "slow | medium | fast",
+    "avgClipDuration": 2.5,
+    "transitionTypes": ["cut", "fade", "swipe", "zoom", etc.],
+    "hasJumpCuts": true or false
+  },
+  "visualStyle": {
+    "dominantColors": ["list of dominant colors as descriptive names or hex codes"],
+    "contrast": "low | medium | high",
+    "saturation": "muted | natural | vibrant",
+    "filterLook": "vintage | modern | raw | cinematic | warm | cool | etc."
+  },
+  "motionContent": {
+    "subjectType": "product | person | both | other",
+    "motionIntensity": "subtle | moderate | dynamic",
+    "keyActions": ["list of main actions: unboxing, showing, demonstrating, reviewing, etc."]
+  },
+  "audio": {
+    "hasBGM": true or false,
+    "hasVoiceover": true or false,
+    "musicGenre": "upbeat_pop | chill | electronic | acoustic | none | etc."
+  },
+  "overallDescription": "A brief description of the overall style and vibe of this video in English"
+}
+
+Important:
+- Be specific and accurate based on what you observe
+- Use the exact property names and value options provided
+- Return ONLY the JSON, no markdown code blocks or explanation`
+
+const SYNTHESIS_PROMPT = `I have analyzed multiple UGC (User Generated Content) videos. Based on these analyses, create a unified style profile that captures the common patterns and dominant characteristics.
+
+Sample Analyses:
+{ANALYSES}
+
+Create a synthesized style profile with:
+1. Identify patterns present in 50%+ of samples as "dominant"
+2. Calculate averages for numeric values
+3. Merge and deduplicate lists
+4. Determine the most common values for categorical fields
+
+Return ONLY a valid JSON object:
+
+{
+  "styleProfile": {
+    "cameraWork": {
+      "dominantStyle": "handheld | tripod | gimbal | mixed",
+      "shakeIntensity": 0.0-1.0,
+      "zoomUsage": 0.0-1.0,
+      "panUsage": 0.0-1.0,
+      "commonMovements": ["array of common movements"]
+    },
+    "editStyle": {
+      "pacing": "slow | medium | fast",
+      "avgClipDuration": number,
+      "transitionTypes": ["array"],
+      "hasJumpCuts": boolean,
+      "beatSync": boolean
+    },
+    "visualStyle": {
+      "colorTone": "warm | cool | neutral",
+      "filterLook": "string",
+      "contrast": "low | medium | high",
+      "saturation": "muted | natural | vibrant",
+      "dominantColors": ["hex colors or descriptive names"]
+    },
+    "motionStyle": {
+      "intensity": "subtle | moderate | dynamic",
+      "subjectMovement": "static | subtle | active",
+      "cameraMovement": "rare | occasional | frequent"
+    },
+    "audioStyle": {
+      "hasBGM": boolean,
+      "hasVoiceover": boolean,
+      "musicGenre": "string",
+      "sfxUsage": "none | light | moderate | heavy"
+    }
+  },
+  "generationParams": {
+    "klingPromptSuffix": "style description for Kling AI prompt",
+    "klingNegativePrompt": "things to avoid",
+    "motionPresetId": "suggested motion preset ID or null",
+    "cameraPresetId": "suggested camera preset ID or null",
+    "ffmpegEffects": {
+      "effects": ["camera_shake", "film_grain", "vintage_filter", "phone_quality", "selfie_mode"],
+      "intensity": "light | medium | heavy"
+    }
+  },
+  "keywords": ["array of style keywords"],
+  "overallVibe": "A natural language description of the overall style"
+}
+
+Important:
+- Be specific based on the actual sample data
+- For klingPromptSuffix, create a detailed style description that can be appended to any prompt
+- For ffmpegEffects, only include effects that match the analyzed style
+- Return ONLY the JSON, no explanation`
+
+async function fetchVideoAsBase64(videoUrl: string): Promise<{ base64: string; mimeType: string }> {
+  const response = await fetch(videoUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch video: ${response.status}`)
+  }
+
+  const contentType = response.headers.get('content-type') || 'video/mp4'
+  const arrayBuffer = await response.arrayBuffer()
+  const base64 = Buffer.from(arrayBuffer).toString('base64')
+
+  return { base64, mimeType: contentType }
+}
+
+async function analyzeVideoWithGemini(videoUrl: string): Promise<Record<string, unknown>> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not set')
+  }
+
+  const { base64, mimeType } = await fetchVideoAsBase64(videoUrl)
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64
+            }
+          },
+          { text: SAMPLE_ANALYSIS_PROMPT }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 2048,
+      }
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`Gemini API error: ${response.status} - ${JSON.stringify(errorData)}`)
+  }
+
+  const result = await response.json()
+
+  if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
+    throw new Error(`Unexpected Gemini response: ${JSON.stringify(result)}`)
+  }
+
+  const text = result.candidates[0].content.parts[0].text
+
+  let jsonText = text.trim()
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+  }
+
+  return JSON.parse(jsonText)
+}
+
+async function synthesizeWithGemini(analyses: Record<string, unknown>[]): Promise<Record<string, unknown>> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not set')
+  }
+
+  const prompt = SYNTHESIS_PROMPT.replace('{ANALYSES}', JSON.stringify(analyses, null, 2))
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 4096,
+      }
+    })
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`Gemini API error: ${response.status} - ${JSON.stringify(errorData)}`)
+  }
+
+  const result = await response.json()
+
+  if (!result.candidates?.[0]?.content?.parts?.[0]?.text) {
+    throw new Error(`Unexpected Gemini response: ${JSON.stringify(result)}`)
+  }
+
+  const text = result.candidates[0].content.parts[0].text
+
+  let jsonText = text.trim()
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+  }
+
+  return JSON.parse(jsonText)
+}
+
+async function processUGCStyleAnalysis(job: Job<UGCStyleAnalysisJobData>) {
+  const { styleId, userId, sampleIds, phase } = job.data
+
+  console.log(`[UGCStyle] Processing ${phase} for style ${styleId}`)
+
+  if (phase === 'analyze-samples') {
+    // サンプル動画を並列分析（最大5同時）
+    const { data: samples, error: samplesError } = await supabase
+      .from('ugc_style_samples')
+      .select('*')
+      .in('id', sampleIds)
+      .eq('analysis_status', 'pending')
+
+    if (samplesError || !samples) {
+      throw new Error(`Failed to fetch samples: ${samplesError?.message}`)
+    }
+
+    const pendingSamples = samples as UGCStyleSample[]
+    console.log(`[UGCStyle] Analyzing ${pendingSamples.length} samples`)
+
+    // 並列処理（最大5同時）
+    const CONCURRENCY = 5
+    for (let i = 0; i < pendingSamples.length; i += CONCURRENCY) {
+      const batch = pendingSamples.slice(i, i + CONCURRENCY)
+
+      await Promise.all(batch.map(async (sample) => {
+        try {
+          // ステータスを更新
+          await supabase
+            .from('ugc_style_samples')
+            .update({ analysis_status: 'analyzing' } as never)
+            .eq('id', sample.id)
+
+          console.log(`[UGCStyle] Analyzing sample ${sample.id}`)
+
+          // Geminiで分析
+          const analysisResult = await analyzeVideoWithGemini(sample.video_url)
+
+          // 結果を保存
+          await supabase
+            .from('ugc_style_samples')
+            .update({
+              analysis_result: analysisResult,
+              analysis_status: 'completed',
+            } as never)
+            .eq('id', sample.id)
+
+          console.log(`[UGCStyle] Sample ${sample.id} analyzed`)
+
+        } catch (error) {
+          console.error(`[UGCStyle] Sample ${sample.id} failed:`, error)
+
+          await supabase
+            .from('ugc_style_samples')
+            .update({
+              analysis_status: 'failed',
+              error_message: error instanceof Error ? error.message : 'Unknown error',
+            } as never)
+            .eq('id', sample.id)
+        }
+      }))
+
+      // 進捗更新
+      const progress = Math.round(((i + batch.length) / pendingSamples.length) * 80)
+      await job.updateProgress(progress)
+    }
+
+    // 全サンプル分析完了したら統合フェーズをキュー
+    const { data: allSamples } = await supabase
+      .from('ugc_style_samples')
+      .select('analysis_status')
+      .eq('ugc_style_id', styleId)
+
+    const completedCount = (allSamples || []).filter(s => s.analysis_status === 'completed').length
+    const totalCount = (allSamples || []).length
+
+    if (completedCount === totalCount || completedCount >= 5) {
+      // 統合フェーズをキューに追加
+      const { Queue } = await import('bullmq')
+      const queue = new Queue('ugc-style-analysis', { connection })
+      await queue.add('analyze', {
+        styleId,
+        userId,
+        sampleIds: [],
+        phase: 'synthesize',
+      })
+      await queue.close()
+      console.log(`[UGCStyle] Queued synthesize phase for style ${styleId}`)
+    }
+
+    return { phase: 'analyze-samples', completedCount, totalCount }
+
+  } else if (phase === 'synthesize') {
+    // 分析結果を統合
+    const { data: samples, error: samplesError } = await supabase
+      .from('ugc_style_samples')
+      .select('analysis_result')
+      .eq('ugc_style_id', styleId)
+      .eq('analysis_status', 'completed')
+
+    if (samplesError || !samples || samples.length === 0) {
+      throw new Error('No completed analyses found')
+    }
+
+    console.log(`[UGCStyle] Synthesizing ${samples.length} analyses`)
+
+    // Geminiで統合
+    const analyses = samples.map(s => s.analysis_result as Record<string, unknown>)
+    const synthesisResult = await synthesizeWithGemini(analyses)
+
+    // 結果を保存
+    const { error: updateError } = await supabase
+      .from('ugc_styles')
+      .update({
+        style_profile: synthesisResult.styleProfile,
+        generation_params: synthesisResult.generationParams,
+        keywords: synthesisResult.keywords,
+        overall_vibe: synthesisResult.overallVibe,
+        status: 'ready',
+        sample_count: samples.length,
+      } as never)
+      .eq('id', styleId)
+
+    if (updateError) {
+      throw new Error(`Failed to update style: ${updateError.message}`)
+    }
+
+    console.log(`[UGCStyle] Style ${styleId} synthesis completed`)
+    await job.updateProgress(100)
+
+    return { phase: 'synthesize', success: true }
+  }
+}
+
+const ugcStyleWorker = new Worker('ugc-style-analysis', processUGCStyleAnalysis, {
+  connection,
+  concurrency: 2, // 複数スタイルを同時処理可能
+})
+
+ugcStyleWorker.on('ready', () => {
+  console.log('[UGCStyle] Worker is ready')
+})
+
+ugcStyleWorker.on('completed', (job) => {
+  console.log(`[UGCStyle] Job ${job.id} completed`)
+})
+
+ugcStyleWorker.on('failed', async (job, error) => {
+  console.error(`[UGCStyle] Job ${job?.id} failed:`, error.message)
+
+  // スタイルをfailedに更新
+  if (job?.data?.styleId) {
+    await supabase
+      .from('ugc_styles')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+      } as never)
+      .eq('id', job.data.styleId)
+  }
+})
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('[Worker] Shutting down...')
@@ -985,6 +1389,7 @@ process.on('SIGTERM', async () => {
   await pipelineWorker.close()
   await variantWorker.close()
   await batchWorker.close()
+  await ugcStyleWorker.close()
   process.exit(0)
 })
 
@@ -994,5 +1399,6 @@ process.on('SIGINT', async () => {
   await pipelineWorker.close()
   await variantWorker.close()
   await batchWorker.close()
+  await ugcStyleWorker.close()
   process.exit(0)
 })
